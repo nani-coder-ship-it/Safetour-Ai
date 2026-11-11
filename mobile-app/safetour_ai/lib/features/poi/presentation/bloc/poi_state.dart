@@ -71,11 +71,22 @@ class PoiLoaded extends PoiState {
     }).toList();
   }
 
-  /// Extracts all distinct subTypes present in current loaded POIs with their count
+  /// Extracts all distinct human-friendly subTypes present in current loaded POIs with their count
   Map<String, int> get availableSubTypes {
     final map = <String, int>{};
+    const invalidSubTypes = {
+      'building',
+      'amenity',
+      'other',
+      'yes',
+      'no',
+      'unclassified',
+      'point',
+      'undefined',
+    };
     for (final p in pois) {
-      final st = (p.subType ?? 'other').toLowerCase();
+      final st = (p.subType ?? '').toLowerCase().trim();
+      if (st.isEmpty || invalidSubTypes.contains(st)) continue;
       map[st] = (map[st] ?? 0) + 1;
     }
     return map;

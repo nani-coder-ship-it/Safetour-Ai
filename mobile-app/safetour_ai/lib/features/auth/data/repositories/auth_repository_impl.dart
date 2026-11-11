@@ -1,4 +1,5 @@
 import '../../domain/entities/user_entity.dart';
+import '../../domain/entities/emergency_contact_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
 import '../../../../core/errors/exceptions.dart';
@@ -54,6 +55,39 @@ class AuthRepositoryImpl implements AuthRepository {
       await remoteDataSource.logout();
     } catch (e) {
       // Ignore logout errors
+    }
+  }
+
+  @override
+  Future<List<EmergencyContactEntity>> getEmergencyContacts() async {
+    try {
+      final models = await remoteDataSource.getEmergencyContacts();
+      return models;
+    } on AuthException catch (e) {
+      throw AuthFailure(e.message);
+    } on NetworkException catch (e) {
+      throw NetworkFailure(e.message);
+    } on ServerException catch (e) {
+      throw ServerFailure(e.message);
+    } catch (e) {
+      throw ServerFailure(e.toString());
+    }
+  }
+
+  @override
+  Future<List<EmergencyContactEntity>> updateEmergencyContacts(
+      List<EmergencyContactEntity> contacts) async {
+    try {
+      final models = await remoteDataSource.updateEmergencyContacts(contacts);
+      return models;
+    } on AuthException catch (e) {
+      throw AuthFailure(e.message);
+    } on NetworkException catch (e) {
+      throw NetworkFailure(e.message);
+    } on ServerException catch (e) {
+      throw ServerFailure(e.message);
+    } catch (e) {
+      throw ServerFailure(e.toString());
     }
   }
 }

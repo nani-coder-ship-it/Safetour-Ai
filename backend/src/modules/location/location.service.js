@@ -32,14 +32,36 @@ const saveLocation = async (userId, lat, lng, extras = {}) => {
 
   if (activeZones && activeZones.length > 0) {
     for (const zone of activeZones) {
-      // Create an alert document for each zone entered
-      const alert = await Alert.create({
+      // Prevent spam: Check if an active alert for this zone already exists within last 6 hours
+      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
+      const existingAlert = await Alert.findOne({
         userId,
-        type: 'geofence',
-        message: `Entered ${zone.name}`,
         zoneId: zone._id,
+        status: 'active',
+        createdAt: { $gte: sixHoursAgo },
       });
-      triggeredAlerts.push(alert);
+
+      if (!existingAlert) {
+        const alertMsg = zone.description
+          ? `⚠️ ${zone.name} - ${zone.description}`
+          : `⚠️ Danger Zone Alert: Entered ${zone.name}`;
+
+        const alert = await Alert.create({
+          userId,
+          title: `⚡ Danger Zone Breach: Inside ${zone.name}`,
+          type: 'geofence',
+          severity: zone.zoneType === 'red' ? 'critical' : 'warning',
+          locationName: zone.name,
+          message: alertMsg,
+          safetyTip: zone.description || 'Follow local safety guidelines and proceed with caution.',
+          zoneId: zone._id,
+          distanceKm: 0.0,
+          coordinates: [lng, lat],
+        });
+        triggeredAlerts.push(alert);
+      } else {
+        triggeredAlerts.push(existingAlert);
+      }
     }
   }
 

@@ -1,4 +1,5 @@
 const POI = require('./poi.model');
+const mongoose = require('mongoose');
 const { queryOverpass, isStudentAccommodation } = require('./overpass.client');
 const { queryNominatim } = require('./nominatim.client');
 const { queryMapTiler } = require('./maptiler.client');
@@ -55,25 +56,32 @@ const getNearby = async (lat, lng, radiusMeters = 3000, type, options = {}) => {
 
   const sevenDaysAgo = new Date(Date.now() - CACHE_TTL_DAYS * 24 * 60 * 60 * 1000);
 
-  // 1. Check local MongoDB cache using 2dsphere spatial index
+  // 1. Check local MongoDB cache using 2dsphere spatial index (only if DB is connected)
   let cachedResults = [];
-  try {
-    const regionalLookupDist = Math.max(numericRadius * 2, 14000);
-    cachedResults = await POI.find({
-      type,
-      lastSynced: { $gte: sevenDaysAgo },
-      location: {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: [numericLng, numericLat],
+  if (mongoose.connection && mongoose.connection.readyState === 1) {
+    try {
+      const regionalLookupDist = Math.max(numericRadius * 2, 14000);
+      cachedResults = await POI.find({
+        type,
+        $or: [
+          { osmId: /^seed\// },
+          { lastSynced: { $gte: sevenDaysAgo } },
+        ],
+        location: {
+          $near: {
+            $geometry: {
+              type: 'Point',
+              coordinates: [numericLng, numericLat],
+            },
+            $maxDistance: regionalLookupDist,
           },
-          $maxDistance: regionalLookupDist,
         },
-      },
-    }).limit(60).lean();
-  } catch (geoErr) {
-    console.warn('[POI Service] MongoDB cache lookup notice:', geoErr.message);
+      }).limit(60).lean();
+    } catch (geoErr) {
+      console.warn('[POI Service] MongoDB cache lookup notice:', geoErr.message);
+    }
+  } else {
+    console.log('[POI Service] MongoDB is disconnected or buffering, skipping DB cache to query live providers immediately.');
   }
 
   const placesWithinRadius = cachedResults.filter((p) => {
@@ -87,36 +95,62 @@ const getNearby = async (lat, lng, radiusMeters = 3000, type, options = {}) => {
 
   let freshPois = [];
 
-  // 2. If cache has fewer than threshold, query live POI providers concurrently
-  if (placesWithinRadius.length < 5 && cachedResults.length < 6) {
-    console.log(`[POI Service] Cache count (${cachedResults.length}) is below threshold. Querying live MapTiler + Overpass + Nominatim providers concurrently...`);
+  // 2. If places strictly within requested radius is low, query fast live POI provider first
+  if (placesWithinRadius.length < 3 || options.forceRefresh) {
+    console.log(`[POI Service] Places within radius (${placesWithinRadius.length}) is below threshold (3). Querying fast MapTiler provider (<200ms)...`);
 
-    const [maptilerResult, overpassResult, nominatimResult] = await Promise.allSettled([
-      queryMapTiler(numericLat, numericLng, numericRadius, type),
-      queryOverpass(numericLat, numericLng, numericRadius, type),
-      queryNominatim(numericLat, numericLng, numericRadius, type),
-    ]);
+    // Priority 1: MapTiler is ultra-fast (<200ms) and authoritative
+    const maptilerPois = await queryMapTiler(numericLat, numericLng, numericRadius, type).catch((err) => {
+      console.warn(`[POI Service] MapTiler notice: ${err.message}`);
+      return [];
+    });
 
-    if (maptilerResult.status === 'fulfilled' && Array.isArray(maptilerResult.value)) {
-      freshPois.push(...maptilerResult.value);
-    } else if (maptilerResult.status === 'rejected') {
-      console.warn(`[POI Service] MapTiler notice: ${maptilerResult.reason?.message}`);
+    freshPois.push(...maptilerPois);
+
+    // If MapTiler gave sufficient results (>= 3), return immediately to mobile user!
+    // Run Overpass asynchronously in background to enrich cache without stalling the user.
+    if (freshPois.length < 3) {
+      console.log(`[POI Service] MapTiler returned ${freshPois.length} places. Querying Overpass & Nominatim with 2s ceiling...`);
+      const fallbackPromises = [
+        queryOverpass(numericLat, numericLng, numericRadius, type).catch(() => []),
+        queryNominatim(numericLat, numericLng, numericRadius, type).catch(() => []),
+      ];
+
+      const results = await Promise.allSettled(
+        fallbackPromises.map((p) =>
+          Promise.race([
+            p,
+            new Promise((resolve) => setTimeout(() => resolve([]), 2000)),
+          ])
+        )
+      );
+
+      for (const res of results) {
+        if (res.status === 'fulfilled' && Array.isArray(res.value)) {
+          freshPois.push(...res.value);
+        }
+      }
+    } else {
+      // Background enrichment: Sync Overpass into DB without blocking user
+      queryOverpass(numericLat, numericLng, numericRadius, type)
+        .then((bgPois) => {
+          if (bgPois && bgPois.length > 0 && mongoose.connection && mongoose.connection.readyState === 1) {
+            const bulkOps = bgPois.map((p) => ({
+              updateOne: { filter: { osmId: p.osmId }, update: { $set: p }, upsert: true },
+            }));
+            POI.bulkWrite(bulkOps, { ordered: false }).catch(() => {});
+          }
+        })
+        .catch(() => {});
     }
 
-    if (overpassResult.status === 'fulfilled' && Array.isArray(overpassResult.value)) {
-      freshPois.push(...overpassResult.value);
-    } else if (overpassResult.status === 'rejected') {
-      console.warn(`[POI Service] Overpass notice: ${overpassResult.reason?.message}`);
-    }
+    console.log(`\n--- [PROVIDER RESULTS BREAKDOWN] ---`);
+    console.log(`MapTiler returned: ${maptilerPois.length} places`);
+    console.log(`Total raw fresh places gathered: ${freshPois.length}`);
+    console.log(`------------------------------------\n`);
 
-    if (nominatimResult.status === 'fulfilled' && Array.isArray(nominatimResult.value)) {
-      freshPois.push(...nominatimResult.value);
-    } else if (nominatimResult.status === 'rejected') {
-      console.warn(`[POI Service] Nominatim notice: ${nominatimResult.reason?.message}`);
-    }
-
-    // Upsert fresh places into MongoDB in background
-    if (freshPois.length > 0) {
+    // Upsert fresh places into MongoDB in background only if DB is connected
+    if (freshPois.length > 0 && mongoose.connection && mongoose.connection.readyState === 1) {
       const bulkOps = freshPois.map((poi) => ({
         updateOne: {
           filter: { osmId: poi.osmId },
@@ -158,9 +192,27 @@ const getNearby = async (lat, lng, radiusMeters = 3000, type, options = {}) => {
     if (typeof pLat !== 'number' || typeof pLng !== 'number') continue;
 
     // Requirement 3 & 20: Validate and exclude student / collegiate accommodations
-    if (type === 'hotel' && isStudentAccommodation(place.name, place)) {
+    if (isStudentAccommodation(place.name, place)) {
       excludedLog.push({ name: place.name, reason: 'Collegiate / Student Accommodation' });
       continue;
+    }
+
+    // Strict qualification check: If type is 'hotel', place MUST be an actual travel accommodation
+    if (type === 'hotel') {
+      const allowedHotelSubTypes = ['hotel', 'guest_house', 'motel', 'hostel', 'resort', 'lodge', 'chalet', 'apartment', 'bed_and_breakfast', 'tourist_hostel', 'tourism'];
+      const st = (place.subType || '').toLowerCase();
+      const n = (place.name || '').toLowerCase();
+      if (
+        st === 'canteen' || st === 'restaurant' || st === 'fast_food' || st === 'cafe' || st === 'bakery' || st === 'amenity' || st === 'building' ||
+        /\b(canteen|mess|biriyani|bakes|bakery|tea stall|juice|eatery)\b/i.test(n) ||
+        (place.subType && !allowedHotelSubTypes.includes(st) && !/\b(hotel|lodge|resort|guest house|homestay|motel|inn|stay)\b/i.test(n))
+      ) {
+        excludedLog.push({ name: place.name, reason: 'Food establishment/canteen/building cannot qualify under Hotel category' });
+        continue;
+      }
+      if (place.subType === 'tourism') {
+        place.subType = /\blodge\b/i.test(n) ? 'lodge' : (/\bresort\b/i.test(n) ? 'resort' : 'hotel');
+      }
     }
 
     // Requirement 12: Exclude roads, highways, and administrative regions
@@ -232,8 +284,8 @@ const getNearby = async (lat, lng, radiusMeters = 3000, type, options = {}) => {
     }
   }
 
-  // Requirement 11: Search fallback if 0 places within selected radius
-  if (finalPlaces.length === 0 && candidatePlaces.length > 0) {
+  // Requirement 11: Search fallback if 0 places within selected radius (disabled for hotel to enforce honest empty state)
+  if (type !== 'hotel' && finalPlaces.length === 0 && candidatePlaces.length > 0) {
     const fallbackRadius = Math.min(Math.max(numericRadius * 1.8, 6000), 12000);
     console.log(`[POI Fallback] 0 places within strict ${numericRadius}m. Expanding to ${fallbackRadius}m fallback radius...`);
 
@@ -241,7 +293,21 @@ const getNearby = async (lat, lng, radiusMeters = 3000, type, options = {}) => {
       const pLat = place.lat || place.location?.coordinates?.[1];
       const pLng = place.lng || place.location?.coordinates?.[0];
       if (typeof pLat !== 'number' || typeof pLng !== 'number') continue;
-      if (type === 'hotel' && isStudentAccommodation(place.name, place)) continue;
+      if (isStudentAccommodation(place.name, place)) continue;
+
+      // Strict check: Fallback MUST NEVER substitute canteens, restaurants, or generic buildings for hotels
+      if (type === 'hotel') {
+        const allowedHotelSubTypes = ['hotel', 'guest_house', 'motel', 'hostel', 'resort', 'lodge', 'chalet', 'apartment', 'bed_and_breakfast', 'tourist_hostel'];
+        const st = (place.subType || '').toLowerCase();
+        const n = (place.name || '').toLowerCase();
+        if (
+          st === 'canteen' || st === 'restaurant' || st === 'fast_food' || st === 'cafe' || st === 'bakery' || st === 'amenity' || st === 'building' ||
+          /\b(canteen|mess|biriyani|bakes|bakery|tea stall|juice|eatery)\b/i.test(n) ||
+          (place.subType && !allowedHotelSubTypes.includes(st))
+        ) {
+          continue;
+        }
+      }
 
       const distanceMeters = Math.round(calculateHaversineDistanceMeters(numericLat, numericLng, pLat, pLng));
       if (distanceMeters <= fallbackRadius) {

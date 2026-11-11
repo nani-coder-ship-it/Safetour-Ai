@@ -11,6 +11,10 @@ import 'features/auth/presentation/pages/login_page.dart';
 import 'features/home/presentation/pages/home_page.dart';
 import 'features/location/presentation/bloc/location_bloc.dart';
 import 'features/map/presentation/bloc/map_bloc.dart';
+import 'features/alerts/presentation/bloc/alerts_bloc.dart';
+import 'features/alerts/presentation/bloc/alerts_event.dart';
+import 'features/emergency_contacts/presentation/bloc/emergency_contacts_bloc.dart';
+import 'features/emergency_contacts/presentation/bloc/emergency_contacts_event.dart';
 
 import 'dart:async';
 
@@ -59,6 +63,12 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider<MapBloc>(
           create: (_) => di.sl<MapBloc>(),
+        ),
+        BlocProvider<AlertsBloc>(
+          create: (_) => di.sl<AlertsBloc>()..add(const LoadAlerts()),
+        ),
+        BlocProvider<EmergencyContactsBloc>(
+          create: (_) => di.sl<EmergencyContactsBloc>()..add(LoadEmergencyContacts()),
         ),
       ],
       child: MaterialApp(

@@ -1,0 +1,35 @@
+# SafeTour AI - AI Service Git Ignore
+
+# Virtual environment
+venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Environment files
+.env
+
+# Jupyter / Colab
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# Model checkpoints (large binary weights)
+models/*.pt
+models/*.pth
+models/*.onnx
+
+# Large raw datasets (> 100MB)
+*.pbf
+*.osm.pbf
+data/raw/*.pbf
+data/raw/*.osm.pbf
+
+# Data (keep directory structure via .gitkeep)
+# Uncomment if raw graph files become too large for git
+# data/*.graphml

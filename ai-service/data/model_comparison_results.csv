@@ -1,0 +1,5 @@
+Model,Category,Graph_Aware,Edge_Feature_Aware,Trainable_Parameters,Test_MAE,Test_RMSE,Test_R2
+Equal-Weight Heuristic,Heuristic Rule,No,Yes,0,3.552,3.986,-4.4571
+Ridge Regression,Classical ML,No,Yes,16,0.0005,0.0007,1.0
+Standard GCN (Kipf & Welling),Graph Neural Net,Yes (Isotropic),Edge Head Only,20801,1.0624,1.3071,0.4132
+Edge-Conditioned GATv2 (Ours),Graph Neural Net,Yes (Dynamic Attention),Yes (Message Passing + Edge Head),31297,1.1469,1.4104,0.3168

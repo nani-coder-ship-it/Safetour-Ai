@@ -6,7 +6,10 @@ import 'features/auth/data/datasources/auth_remote_datasource.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/usecases/login_user.dart';
 import 'features/auth/domain/usecases/register_user.dart';
+import 'features/auth/domain/usecases/get_emergency_contacts.dart';
+import 'features/auth/domain/usecases/update_emergency_contacts.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/emergency_contacts/presentation/bloc/emergency_contacts_bloc.dart';
 
 import 'features/location/domain/repositories/location_repository.dart';
 import 'features/location/domain/usecases/send_location.dart';
@@ -17,6 +20,11 @@ import 'features/location/data/services/device_location_service.dart';
 import 'features/location/presentation/bloc/location_bloc.dart';
 
 import 'features/map/presentation/bloc/map_bloc.dart';
+
+import 'features/geofence/domain/repositories/geofence_repository.dart';
+import 'features/geofence/domain/usecases/get_active_zones.dart';
+import 'features/geofence/data/datasources/geofence_remote_datasource.dart';
+import 'features/geofence/data/repositories/geofence_repository_impl.dart';
 
 import 'features/ai_assistant/domain/repositories/chat_repository.dart';
 import 'features/ai_assistant/domain/usecases/send_chat_message.dart';
@@ -30,6 +38,12 @@ import 'features/poi/domain/usecases/search_places.dart';
 import 'features/poi/data/datasources/poi_remote_datasource.dart';
 import 'features/poi/data/repositories/poi_repository_impl.dart';
 import 'features/poi/presentation/bloc/poi_bloc.dart';
+
+import 'features/alerts/data/datasources/alerts_remote_datasource.dart';
+import 'features/alerts/presentation/bloc/alerts_bloc.dart';
+
+import 'features/blockchain_id/data/datasources/digital_id_remote_datasource.dart';
+import 'features/blockchain_id/presentation/bloc/digital_id_bloc.dart';
 
 final sl = GetIt.instance;
 
@@ -83,7 +97,10 @@ Future<void> init() async {
 
   // --- Map Feature ---
   sl.registerFactory(
-    () => MapBloc(locationService: sl()),
+    () => MapBloc(
+      locationService: sl(),
+      getActiveZones: sl(),
+    ),
   );
 
   // Data sources
@@ -101,18 +118,40 @@ Future<void> init() async {
   // ==========================================
   // Features - Geofence
   // ==========================================
+  // Use cases
+  sl.registerLazySingleton(() => GetActiveZones(sl()));
+
+  // Repository
+  sl.registerLazySingleton<GeofenceRepository>(
+    () => GeofenceRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  // Data sources
+  sl.registerLazySingleton<GeofenceRemoteDataSource>(
+    () => GeofenceRemoteDataSourceImpl(dioClient: sl()),
+  );
 
   // ==========================================
   // Features - Route
   // ==========================================
 
   // ==========================================
-  // Features - SOS
+  // Features - SOS & Emergency Contacts
   // ==========================================
+  sl.registerFactory(() => EmergencyContactsBloc(
+        getEmergencyContacts: sl(),
+        updateEmergencyContacts: sl(),
+      ));
+  sl.registerLazySingleton(() => GetEmergencyContacts(sl()));
+  sl.registerLazySingleton(() => UpdateEmergencyContacts(sl()));
 
   // ==========================================
   // Features - Blockchain ID
   // ==========================================
+  sl.registerFactory(() => DigitalIdBloc(remoteDataSource: sl()));
+  sl.registerLazySingleton<DigitalIdRemoteDataSource>(
+    () => DigitalIdRemoteDataSourceImpl(dioClient: sl()),
+  );
 
   // ==========================================
   // Features - AI Assistant
@@ -140,6 +179,14 @@ Future<void> init() async {
   );
   sl.registerLazySingleton<PoiRemoteDataSource>(
     () => PoiRemoteDataSourceImpl(dioClient: sl()),
+  );
+
+  // ==========================================
+  // Features - Alerts
+  // ==========================================
+  sl.registerFactory(() => AlertsBloc(remoteDataSource: sl()));
+  sl.registerLazySingleton<AlertsRemoteDataSource>(
+    () => AlertsRemoteDataSourceImpl(dioClient: sl()),
   );
 
   // ==========================================

@@ -41,7 +41,11 @@ const queryMapTiler = async (lat, lng, radiusMeters = 3000, type) => {
   const seenIds = new Set();
   const startTime = Date.now();
 
-  console.log(`[MapTiler POI] Querying fast POI search for "${type}" around (${lat}, ${lng})...`);
+  console.log(`\n=================== [MAPTILER QUERY DETAILS] ===================`);
+  console.log(`POI Type: "${type}" | Center Proximity: (${lng}, ${lat})`);
+  console.log(`MapTiler Category Search Queries: ${JSON.stringify(queries.slice(0, 3))}`);
+  queries.slice(0, 3).forEach((q, idx) => console.log(`   Query #${idx + 1}: ${MAPTILER_BASE_URL}/${encodeURIComponent(q)}.json?proximity=${lng},${lat}&limit=10`));
+  console.log(`================================================================\n`);
 
   // Run top queries in parallel with 3s timeout
   const promises = queries.slice(0, 3).map(async (query) => {
@@ -68,8 +72,13 @@ const queryMapTiler = async (lat, lng, radiusMeters = 3000, type) => {
             const placeId = feat.id || `maptiler_${fLat}_${fLng}`;
             if (seenIds.has(placeId)) continue;
 
-            // Student accommodation exclusion
-            if (type === 'hotel' && isStudentAccommodation(name, feat.properties || {})) {
+            // Student accommodation exclusion across all categories
+            if (isStudentAccommodation(name, feat.properties || {})) {
+              continue;
+            }
+
+            // A restaurant or food place never qualifies under hotel
+            if (type === 'hotel' && (feat.properties?.category === 'restaurant' || feat.properties?.category === 'food' || feat.properties?.category === 'cafe')) {
               continue;
             }
 

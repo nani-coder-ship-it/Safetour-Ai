@@ -63,11 +63,16 @@ const getNearbyPOIs = async (req, res, next) => {
         search: search ? search.trim() : undefined,
       });
 
+      const radiusKm = Math.round((parseInt(radius, 10) || 3000) / 1000);
+      const emptyMsg = normalizedType === 'hotel'
+        ? `No hotels or lodges found within ${radiusKm}km — try selecting a larger search radius (5km or 8km).`
+        : `No ${normalizedType.replace('_', ' ')}s found within ${radiusKm}km.`;
+
       res.status(200).json({
         success: true,
         count: pois.length,
         data: pois,
-        message: pois.length === 0 ? 'No nearby places found for this search area' : 'Nearby places retrieved successfully',
+        message: pois.length === 0 ? emptyMsg : 'Nearby places retrieved successfully',
       });
     } catch (err) {
       if (err.name === 'OverpassTimeoutError' || err.isTimeout) {

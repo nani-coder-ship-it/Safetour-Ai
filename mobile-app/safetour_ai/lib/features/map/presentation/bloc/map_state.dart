@@ -1,6 +1,7 @@
 import 'package:latlong2/latlong.dart';
 import '../../domain/entities/map_marker_entity.dart';
 import '../../domain/entities/map_zone_entity.dart';
+import '../../../geofence/domain/entities/danger_zone_entity.dart';
 
 abstract class MapState {}
 
@@ -19,11 +20,15 @@ class MapLoaded extends MapState {
   // Vector geofence safe/danger zones to render on the map overlay
   final List<MapZoneEntity> zones;
 
+  // Active danger zones fetched from backend geofence API
+  final List<DangerZoneEntity> activeZones;
+
   MapLoaded({
     required this.currentCenter,
     required this.markers,
     this.userPosition,
     this.zones = const [],
+    this.activeZones = const [],
   });
 
   MapLoaded copyWith({
@@ -31,12 +36,14 @@ class MapLoaded extends MapState {
     List<MapMarkerEntity>? markers,
     LatLng? userPosition,
     List<MapZoneEntity>? zones,
+    List<DangerZoneEntity>? activeZones,
   }) {
     return MapLoaded(
       currentCenter: currentCenter ?? this.currentCenter,
       markers: markers ?? this.markers,
       userPosition: userPosition ?? this.userPosition,
       zones: zones ?? this.zones,
+      activeZones: activeZones ?? this.activeZones,
     );
   }
 }

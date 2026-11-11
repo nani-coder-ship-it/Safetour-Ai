@@ -11,7 +11,8 @@ const createZone = async (req, res, next) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to perform this action',
+        data: null,
+        message: 'Only admins can create danger zones',
       });
     }
 

@@ -16,9 +16,8 @@ const OVERPASS_TIMEOUT_SECONDS = 15;
  */
 const OSM_TYPE_TAG_MAP = {
   hotel: [
-    '["tourism"~"^(hotel|guest_house|motel|resort|lodge|homestay|chalet|apartment|bed_and_breakfast|inn|hostel)$"]',
-    '["amenity"~"^(hotel|lodging|guest_house|dharamshala|choultry)$"]',
-    '["building"~"^(hotel|lodge|guest_house)$"]',
+    '["tourism"~"^(hotel|guest_house|motel|resort|lodge|hostel)$"]',
+    '["building"="hotel"]["tourism"]',
   ],
   hospital: [
     '["amenity"~"^(hospital|clinic|doctors)$"]',
@@ -34,8 +33,9 @@ const OSM_TYPE_TAG_MAP = {
     '["emergency"="police"]',
   ],
   restaurant: [
-    '["amenity"~"^(restaurant|cafe|fast_food|food_court|ice_cream|pub|bar)$"]',
-    '["shop"~"^(bakery|pastry)$"]',
+    '["amenity"~"^(restaurant|cafe|fast_food|food_court|canteen|ice_cream|pub|bar)$"]',
+    '["shop"~"^(bakery|pastry|confectionery)$"]',
+    '["name"~"(Hotel|Mess|Canteen|Bhavan|Kitchen|Bakery|Cafe|Tea|Tiffin)",i]',
   ],
   atm: [
     '["amenity"="atm"]',
@@ -75,6 +75,7 @@ const OSM_TYPE_TAG_MAP = {
     '["leisure"~"^(park|garden|nature_reserve|water_park)$"]',
     '["amenity"="place_of_worship"]',
     '["natural"~"^(beach|waterfall|peak|spring|cave_entrance)$"]',
+    '["name"~"(Temple|Kovil|Koil|Amman|Murugan|Perumal|Sivan|Church|Mosque|Dargah|Falls|Dam)",i]',
   ],
 };
 
@@ -275,17 +276,17 @@ const OVERPASS_ENDPOINTS = [
   {
     name: 'Overpass Primary (overpass-api.de)',
     url: 'https://overpass-api.de/api/interpreter',
-    timeoutMs: 3500,
+    timeoutMs: 6000,
   },
   {
     name: 'Overpass Kumi Systems',
     url: 'https://overpass.kumi.systems/api/interpreter',
-    timeoutMs: 3500,
+    timeoutMs: 6000,
   },
   {
     name: 'Overpass Private Coffee',
     url: 'https://overpass.private.coffee/api/interpreter',
-    timeoutMs: 3500,
+    timeoutMs: 6000,
   },
 ];
 
@@ -358,6 +359,10 @@ const fetchFromEndpoint = async (endpoint, query) => {
  */
 const queryOverpass = async (lat, lng, radiusMeters = 3000, type) => {
   const query = buildOverpassQuery(lat, lng, radiusMeters, type);
+  console.log(`\n=================== [OVERPASS QUERY DETAILS] ===================`);
+  console.log(`POI Type: "${type}" | Search Radius: ${radiusMeters}m | Center: (${lat}, ${lng})`);
+  console.log(`Exact Overpass QL Query Sent to Mirrors:\n${query}`);
+  console.log(`===============================================================\n`);
   const queryStartTime = Date.now();
 
   let lastError = null;

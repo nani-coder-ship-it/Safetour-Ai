@@ -14,6 +14,29 @@ const authSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  phone: {
+    type: String,
+    trim: true,
+  },
+  emergencyContacts: [
+    {
+      name: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      phone: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      relation: {
+        type: String,
+        trim: true,
+        default: '',
+      },
+    },
+  ],
   role: {
     type: String,
     default: 'tourist',

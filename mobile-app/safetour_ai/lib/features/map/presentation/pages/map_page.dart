@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -16,6 +19,7 @@ import '../../../../core/network/dio_client.dart';
 import '../../../poi/domain/entities/poi_entity.dart';
 import '../../../poi/domain/usecases/search_places.dart';
 import '../../../poi/domain/usecases/get_nearby_pois.dart';
+import '../../../geofence/domain/entities/danger_zone_entity.dart';
 import '../../../ai_assistant/presentation/pages/chat_page.dart';
 
 class MapPage extends StatefulWidget {
@@ -73,9 +77,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       if (!mounted) return;
       final lat = latTween.evaluate(animation);
       final lng = lngTween.evaluate(animation);
-      final zoom = zoomTween.evaluate(animation);
-      if (!lat.isNaN && !lng.isNaN && !zoom.isNaN) {
-        _mapController.move(LatLng(lat, lng), zoom);
+      final currentZoom = zoomTween.evaluate(animation);
+      if (!lat.isNaN && !lng.isNaN && !currentZoom.isNaN &&
+          lat >= -90.0 && lat <= 90.0 && lng >= -180.0 && lng <= 180.0) {
+        _mapController.move(LatLng(lat, lng), currentZoom);
       }
     });
 
@@ -103,6 +108,33 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // True initially (or when user taps My Location), False when user pans/drags map or searches
   bool _isFollowingUser = true;
   bool _hasInitiallyCentered = false;
+
+  // Real-time Geofence Breach Tracker for Fake GPS and Live Movement
+  String? _lastAlertedDangerZone;
+
+  void _checkGeofenceBreach(LatLng userPos, List<DangerZoneEntity> zones) {
+    if (zones.isEmpty) return;
+    DangerZoneEntity? breachedZone;
+    for (final zone in zones) {
+      if (zone.isDanger && _isPointInsidePolygon(userPos, zone.polygonPoints)) {
+        breachedZone = zone;
+        break;
+      }
+    }
+
+    if (breachedZone != null) {
+      if (_lastAlertedDangerZone != breachedZone.name) {
+        _lastAlertedDangerZone = breachedZone.name;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _showDangerZoneDetails(breachedZone!);
+          }
+        });
+      }
+    } else {
+      _lastAlertedDangerZone = null;
+    }
+  }
 
   // Current camera center coordinates for the floating badge
   double? _cameraLat;
@@ -171,6 +203,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   /// Tap anywhere on the map to inspect any building or spot (like Google Maps)
   Future<void> _onMapTapped(LatLng point) async {
     FocusScope.of(context).unfocus();
+
+    // Check if user tapped inside any active danger zone
+    final mapState = context.read<MapBloc>().state;
+    if (mapState is MapLoaded && mapState.activeZones.isNotEmpty) {
+      for (final zone in mapState.activeZones) {
+        if (_isPointInsidePolygon(point, zone.polygonPoints)) {
+          _showDangerZoneDetails(zone);
+          return;
+        }
+      }
+    }
 
     final tempId = 'tapped_${point.latitude.toStringAsFixed(5)}_${point.longitude.toStringAsFixed(5)}';
 
@@ -439,7 +482,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       _isFollowingUser = false; // User navigated to a searched place!
     });
 
-    _animatedMapMove(LatLng(place.lat, place.lng), MapConfig.placeFocusZoom);
+    if (!place.lat.isNaN && !place.lat.isInfinite &&
+        !place.lng.isNaN && !place.lng.isInfinite &&
+        place.lat >= -90.0 && place.lat <= 90.0 &&
+        place.lng >= -180.0 && place.lng <= 180.0) {
+      _animatedMapMove(LatLng(place.lat, place.lng), MapConfig.placeFocusZoom);
+    }
   }
 
   Future<void> _fetchCategoryPois(String type) async {
@@ -548,7 +596,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             if (!_hasInitiallyCentered) {
               _hasInitiallyCentered = true;
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (widget.targetPoi != null) {
+                if (widget.targetPoi != null &&
+                    !widget.targetPoi!.lat.isNaN && !widget.targetPoi!.lat.isInfinite &&
+                    !widget.targetPoi!.lng.isNaN && !widget.targetPoi!.lng.isInfinite &&
+                    widget.targetPoi!.lat >= -90.0 && widget.targetPoi!.lat <= 90.0) {
                   _isFollowingUser = false;
                   _mapController.move(
                     LatLng(widget.targetPoi!.lat, widget.targetPoi!.lng),
@@ -571,8 +622,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 );
               } catch (_) {}
             }
-            // When _isFollowingUser is false: DO NOTHING TO THE CAMERA!
-            // The user is exploring another place or freely panning!
+            // Automatic Geofence Danger Zone Breach Detection (Real GPS / Fake GPS)
+            if (state.userPosition != null && state.activeZones.isNotEmpty) {
+              _checkGeofenceBreach(state.userPosition!, state.activeZones);
+            }
           }
         },
         builder: (context, state) {
@@ -644,9 +697,27 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               );
             }
 
-            final initialCenter = activeTarget != null
-                ? LatLng(activeTarget.lat, activeTarget.lng)
-                : (userPos ?? state.currentCenter);
+            LatLng initialCenter = const LatLng(20.5937, 78.9629);
+            if (activeTarget != null &&
+                !activeTarget.lat.isNaN && !activeTarget.lat.isInfinite &&
+                !activeTarget.lng.isNaN && !activeTarget.lng.isInfinite &&
+                activeTarget.lat >= -90.0 && activeTarget.lat <= 90.0 &&
+                activeTarget.lng >= -180.0 && activeTarget.lng <= 180.0) {
+              initialCenter = LatLng(activeTarget.lat, activeTarget.lng);
+            } else if (userPos != null &&
+                !userPos.latitude.isNaN && !userPos.latitude.isInfinite &&
+                !userPos.longitude.isNaN && !userPos.longitude.isInfinite &&
+                userPos.latitude >= -90.0 && userPos.latitude <= 90.0 &&
+                userPos.longitude >= -180.0 && userPos.longitude <= 180.0) {
+              initialCenter = userPos;
+            } else if (!state.currentCenter.latitude.isNaN &&
+                !state.currentCenter.latitude.isInfinite &&
+                !state.currentCenter.longitude.isNaN &&
+                !state.currentCenter.longitude.isInfinite &&
+                state.currentCenter.latitude >= -90.0 && state.currentCenter.latitude <= 90.0 &&
+                state.currentCenter.longitude >= -180.0 && state.currentCenter.longitude <= 180.0) {
+              initialCenter = state.currentCenter;
+            }
 
             return Stack(
               children: [
@@ -659,7 +730,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     maxZoom: MapConfig.maxZoom,
                     minZoom: MapConfig.minZoom,
                     onMapReady: () {
-                      if (activeTarget != null) {
+                      if (activeTarget != null &&
+                          !activeTarget.lat.isNaN && !activeTarget.lat.isInfinite &&
+                          !activeTarget.lng.isNaN && !activeTarget.lng.isInfinite) {
                         _mapController.move(
                           LatLng(activeTarget.lat, activeTarget.lng),
                           MapConfig.placeFocusZoom,
@@ -670,8 +743,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     onTap: (tapPosition, point) => _onMapTapped(point),
                     // Detect manual user panning and pinching
                     onPositionChanged: (MapCamera camera, bool hasGesture) {
-                      _cameraLat = camera.center.latitude;
-                      _cameraLng = camera.center.longitude;
+                      if (!camera.center.latitude.isNaN && !camera.center.latitude.isInfinite) {
+                        _cameraLat = camera.center.latitude;
+                      }
+                      if (!camera.center.longitude.isNaN && !camera.center.longitude.isInfinite) {
+                        _cameraLng = camera.center.longitude;
+                      }
 
                       if (hasGesture) {
                         // User touched, dragged or zoomed the map manually!
@@ -695,14 +772,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     ),
 
                     // 2. Vector Geofence Polygons (Safe Zones & Danger Zones)
-                    PolygonLayer(polygons: _buildZonePolygons(state.zones)),
+                    PolygonLayer(
+                      polygons: [
+                        ..._buildDangerZonePolygons(state.activeZones),
+                        ..._buildZonePolygons(state.zones),
+                      ],
+                    ),
 
                     // 3. Vector Safe Corridors & Route Polylines (Overlay Foundation)
                     PolylineLayer(polylines: _buildRoutePolylines()),
 
                     // 4. Interactive Map Markers (Live Location + POIs)
                     MarkerLayer(
-                      markers: allMarkers.map((marker) {
+                      markers: allMarkers.where((m) =>
+                        !m.lat.isNaN && !m.lat.isInfinite &&
+                        !m.lng.isNaN && !m.lng.isInfinite &&
+                        m.lat >= -90.0 && m.lat <= 90.0 &&
+                        m.lng >= -180.0 && m.lng <= 180.0
+                      ).map((marker) {
                         if (marker.type == MarkerType.user) {
                           // The Google Maps Blue Live Location Marker
                           return Marker(
@@ -1164,10 +1251,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    _animatedMapMove(
-                      LatLng(place.lat, place.lng),
-                      MapConfig.defaultZoom,
-                    );
+                    if (!place.lat.isNaN && !place.lat.isInfinite &&
+                        !place.lng.isNaN && !place.lng.isInfinite &&
+                        place.lat >= -90.0 && place.lat <= 90.0 &&
+                        place.lng >= -180.0 && place.lng <= 180.0) {
+                      _animatedMapMove(
+                        LatLng(place.lat, place.lng),
+                        MapConfig.defaultZoom,
+                      );
+                    }
                   },
                   icon: const Icon(Icons.center_focus_strong_rounded, size: 16),
                   label: const Text('Center on Pin'),
@@ -1206,14 +1298,283 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   /// Builds vector polygon overlays for safe and danger zones
   List<Polygon> _buildZonePolygons(List<MapZoneEntity> zones) {
     if (zones.isEmpty) return const [];
-    return zones.map((zone) {
-      return Polygon(
-        points: zone.points,
-        color: zone.fillColor,
-        borderColor: zone.strokeColor,
-        borderStrokeWidth: zone.strokeWidth,
+    final polygons = <Polygon>[];
+
+    for (final zone in zones) {
+      if (zone.points.isEmpty) continue;
+
+      final validPoints = zone.points.where((p) =>
+        !p.latitude.isNaN && !p.latitude.isInfinite &&
+        !p.longitude.isNaN && !p.longitude.isInfinite &&
+        p.latitude >= -90.0 && p.latitude <= 90.0 &&
+        p.longitude >= -180.0 && p.longitude <= 180.0
+      ).toList();
+
+      if (validPoints.length < 3) continue;
+
+      polygons.add(
+        Polygon(
+          points: validPoints,
+          color: zone.fillColor,
+          borderColor: zone.strokeColor,
+          borderStrokeWidth: zone.strokeWidth,
+        ),
       );
-    }).toList();
+    }
+
+    return polygons;
+  }
+
+  /// Builds vector polygon overlays for active geofence danger zones
+  List<Polygon> _buildDangerZonePolygons(List<DangerZoneEntity> zones) {
+    if (zones.isEmpty) return const [];
+    final polygons = <Polygon>[];
+
+    for (final zone in zones) {
+      if (zone.polygonPoints.isEmpty) continue;
+
+      final validPoints = zone.polygonPoints.where((p) =>
+        !p.latitude.isNaN && !p.latitude.isInfinite &&
+        !p.longitude.isNaN && !p.longitude.isInfinite &&
+        p.latitude >= -90.0 && p.latitude <= 90.0 &&
+        p.longitude >= -180.0 && p.longitude <= 180.0
+      ).toList();
+
+      // In flutter_map, LatLngBounds.fromPoints requires at least 3 points to form a polygon bounding box
+      if (validPoints.length < 3) continue;
+
+      Color fillColor;
+      Color borderColor;
+
+      if (zone.isDanger) {
+        // Red fill (~30% opacity), red border
+        fillColor = const Color(0x4DDC2626);
+        borderColor = const Color(0xFFDC2626);
+      } else if (zone.isCaution) {
+        // Amber/yellow fill (~30% opacity), amber border
+        fillColor = const Color(0x4DF59E0B);
+        borderColor = const Color(0xFFD97706);
+      } else {
+        // Green fill (~30% opacity), green border
+        fillColor = const Color(0x4D10B981);
+        borderColor = const Color(0xFF059669);
+      }
+
+      polygons.add(
+        Polygon(
+          points: validPoints,
+          color: fillColor,
+          borderColor: borderColor,
+          borderStrokeWidth: 2.5,
+        ),
+      );
+    }
+
+    return polygons;
+  }
+
+  /// Ray-casting algorithm to determine if a point is inside a polygon
+  bool _isPointInsidePolygon(LatLng point, List<LatLng> polygonPoints) {
+    if (polygonPoints.length < 3) return false;
+    bool inside = false;
+    int j = polygonPoints.length - 1;
+    for (int i = 0; i < polygonPoints.length; i++) {
+      if ((polygonPoints[i].latitude > point.latitude) != (polygonPoints[j].latitude > point.latitude) &&
+          (point.longitude <
+              (polygonPoints[j].longitude - polygonPoints[i].longitude) *
+                      (point.latitude - polygonPoints[i].latitude) /
+                      (polygonPoints[j].latitude - polygonPoints[i].latitude) +
+                  polygonPoints[i].longitude)) {
+        inside = !inside;
+      }
+      j = i;
+    }
+    return inside;
+  }
+
+  /// Displays detailed hazard info popup/bottom sheet when a danger zone is tapped
+  void _showDangerZoneDetails(DangerZoneEntity zone) {
+    Color themeColor;
+    IconData icon;
+    String badgeText;
+
+    if (zone.isDanger) {
+      themeColor = const Color(0xFFDC2626);
+      icon = Icons.warning_rounded;
+      badgeText = 'HIGH DANGER ZONE';
+      HapticFeedback.heavyImpact();
+      SharedPreferences.getInstance().then((prefs) {
+        final audioEnabled = prefs.getBool('safetour_pref_geofence_audio') ?? true;
+        if (audioEnabled) {
+          final player = AudioPlayer();
+          player.setVolume(1.0).then((_) {
+            player.play(AssetSource('audio/siren.wav'));
+            Future.delayed(const Duration(milliseconds: 1800), () {
+              player.stop();
+              player.dispose();
+            });
+          }).catchError((_) {});
+        }
+      });
+    } else if (zone.isCaution) {
+      themeColor = const Color(0xFFD97706);
+      icon = Icons.info_outline_rounded;
+      badgeText = 'CAUTION ZONE';
+    } else {
+      themeColor = const Color(0xFF059669);
+      icon = Icons.verified_user_rounded;
+      badgeText = 'SAFE ZONE';
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: themeColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: themeColor.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(icon, size: 16, color: themeColor),
+                          const SizedBox(width: 6),
+                          Text(
+                            badgeText,
+                            style: TextStyle(
+                              color: themeColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        zone.displayCategory,
+                        style: TextStyle(
+                          color: Colors.grey.shade800,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  zone.name,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                if (zone.description != null && zone.description!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: themeColor.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: themeColor.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.shield_outlined, size: 20, color: themeColor),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            zone.description!,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade900,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Icon(Icons.radar_rounded, size: 16, color: Colors.grey.shade600),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Monitored by SafeTour AI Geofence Engine',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: themeColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Understood',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   /// Extensible overlay foundation for future safe route / corridor polylines

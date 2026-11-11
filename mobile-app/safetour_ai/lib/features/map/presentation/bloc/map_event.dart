@@ -22,3 +22,15 @@ class UpdateMapZones extends MapEvent {
   final List<MapZoneEntity> zones;
   UpdateMapZones(this.zones);
 }
+
+class LoadDangerZones extends MapEvent {
+  final double lat;
+  final double lng;
+  final int radiusMeters;
+
+  LoadDangerZones({
+    required this.lat,
+    required this.lng,
+    this.radiusMeters = 5000,
+  });
+}

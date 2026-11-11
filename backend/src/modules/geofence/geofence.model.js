@@ -10,6 +10,15 @@ const dangerZoneSchema = new mongoose.Schema({
     enum: ['red', 'yellow', 'green', 'blue'],
     required: true,
   },
+  category: {
+    type: String,
+    enum: ['mountain_peak', 'cliff', 'river', 'lake', 'waterfall', 'reservoir', 'wildlife', 'landslide', 'general'],
+    default: 'general',
+  },
+  description: {
+    type: String,
+    default: 'Hazardous area. Exercise extreme caution.',
+  },
   polygon: {
     type: {
       type: String,
@@ -25,7 +34,7 @@ const dangerZoneSchema = new mongoose.Schema({
   },
   source: {
     type: String,
-    enum: ['manual', 'ai-detected'],
+    enum: ['manual', 'ai-detected', 'natural-hazard-seed'],
     default: 'manual',
   },
   active: {

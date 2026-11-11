@@ -1,0 +1,92 @@
+{
+  "experiment_timestamp": "2026-10-09T05:56:27Z",
+  "random_seed": 42,
+  "split_summary": {
+    "total_nodes": 1389,
+    "total_edges": 4148,
+    "train_edges": 2903,
+    "train_pct": 70.0,
+    "val_edges": 622,
+    "val_pct": 15.0,
+    "test_edges": 623,
+    "test_pct": 15.0
+  },
+  "features": {
+    "node_features_dim": 9,
+    "node_features_list": [
+      "lat_scaled",
+      "lng_scaled",
+      "log_accident_count",
+      "accident_severity_scaled",
+      "regional_accidents_scaled",
+      "crime_score_scaled",
+      "nearby_poi_count",
+      "in_degree",
+      "out_degree"
+    ],
+    "edge_features_dim": 15,
+    "edge_features_list": [
+      "norm_length",
+      "oneway",
+      "road_type_onehot_8dim",
+      "norm_crime_score",
+      "norm_accident_risk",
+      "norm_flood_risk",
+      "norm_tourist_density",
+      "road_blocked"
+    ]
+  },
+  "target_definition": {
+    "formula": "safety_score = clip(100.0 - (0.35*acc_risk + 0.25*crime + 0.15*flood + 0.15*road_vuln + 0.10*tourist), 0.0, 100.0)",
+    "weights": {
+      "accident_risk": 0.35,
+      "crime_score": 0.25,
+      "flood_risk": 0.15,
+      "road_vulnerability": 0.15,
+      "tourist_density": 0.1
+    },
+    "scientific_disclosure": "IMPORTANT DISCLOSURE: Ground-truth safety scores are derived from an empirical multi-hazard formulation incorporating real Tamil Nadu spatial accident counts and district crime statistics alongside environmental stress indicators, rather than independent real-world observation logs for each road segment."
+  },
+  "results": [
+    {
+      "Model": "Equal-Weight Heuristic",
+      "Category": "Heuristic Rule",
+      "Graph_Aware": "No",
+      "Edge_Feature_Aware": "Yes",
+      "Trainable_Parameters": 0,
+      "Test_MAE": 3.552,
+      "Test_RMSE": 3.986,
+      "Test_R2": -4.4571
+    },
+    {
+      "Model": "Ridge Regression",
+      "Category": "Classical ML",
+      "Graph_Aware": "No",
+      "Edge_Feature_Aware": "Yes",
+      "Trainable_Parameters": 16,
+      "Test_MAE": 0.0005,
+      "Test_RMSE": 0.0007,
+      "Test_R2": 1.0
+    },
+    {
+      "Model": "Standard GCN (Kipf & Welling)",
+      "Category": "Graph Neural Net",
+      "Graph_Aware": "Yes (Isotropic)",
+      "Edge_Feature_Aware": "Edge Head Only",
+      "Trainable_Parameters": 20801,
+      "Test_MAE": 1.0624,
+      "Test_RMSE": 1.3071,
+      "Test_R2": 0.4132
+    },
+    {
+      "Model": "Edge-Conditioned GATv2 (Ours)",
+      "Category": "Graph Neural Net",
+      "Graph_Aware": "Yes (Dynamic Attention)",
+      "Edge_Feature_Aware": "Yes (Message Passing + Edge Head)",
+      "Trainable_Parameters": 31297,
+      "Test_MAE": 1.1469,
+      "Test_RMSE": 1.4104,
+      "Test_R2": 0.3168
+    }
+  ]
+}

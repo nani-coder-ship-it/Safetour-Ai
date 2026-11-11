@@ -10,9 +10,13 @@ class DioClient {
     dio = Dio(
       BaseOptions(
         baseUrl: ApiConstants.baseUrl,
-        connectTimeout: const Duration(seconds: 20),
-        receiveTimeout: const Duration(seconds: 20),
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 25),
         sendTimeout: const Duration(seconds: 20),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
       ),
     );
 
@@ -45,28 +49,46 @@ class DioClient {
             errorMessage = e.message ?? errorMessage;
           }
 
-          if (e.type == DioExceptionType.connectionError &&
-              e.requestOptions.baseUrl == ApiConstants.baseUrl &&
-              ApiConstants.baseUrl != ApiConstants.wifiUrl) {
+          // Resilient network fallback: If current baseUrl fails with connection error or timeout,
+          // immediately retry against the alternate baseUrl (USB vs Wi-Fi LAN)
+          final isNetworkFailure = e.type == DioExceptionType.connectionError ||
+              e.type == DioExceptionType.connectionTimeout;
+          final currentBase = dio.options.baseUrl;
+          final alternateBase = currentBase == ApiConstants.baseUrl
+              ? ApiConstants.wifiUrl
+              : ApiConstants.baseUrl;
+
+          final wasRetried = e.requestOptions.extra['_fallbackRetried'] == true;
+
+          if (isNetworkFailure && !wasRetried && currentBase != alternateBase) {
             try {
               final newOptions = Options(
                 method: e.requestOptions.method,
                 headers: e.requestOptions.headers,
                 contentType: e.requestOptions.contentType,
                 responseType: e.requestOptions.responseType,
+                extra: {
+                  ...e.requestOptions.extra,
+                  '_fallbackRetried': true,
+                },
               );
+
               final fallbackPath = e.requestOptions.path.startsWith('http')
-                  ? e.requestOptions.path.replaceFirst(ApiConstants.baseUrl, ApiConstants.wifiUrl)
-                  : '${ApiConstants.wifiUrl}${e.requestOptions.path}';
+                  ? e.requestOptions.path.replaceFirst(currentBase, alternateBase)
+                  : '$alternateBase${e.requestOptions.path}';
+
               final retryResponse = await dio.request(
                 fallbackPath,
                 data: e.requestOptions.data,
                 queryParameters: e.requestOptions.queryParameters,
                 options: newOptions,
               );
+
+              // Auto-remember working URL so all future requests execute with 0ms penalty
+              dio.options.baseUrl = alternateBase;
               return handler.resolve(retryResponse);
             } catch (_) {
-              // Fallback failed, proceed to standard error rejection below
+              // Fallback also failed, proceed to standard error rejection below
             }
           }
 
@@ -78,8 +100,8 @@ class DioClient {
                 requestOptions: e.requestOptions,
                 response: e.response,
                 type: e.type,
-                error: NetworkException('Nearby search timed out. Please check your connection or retry.'),
-                message: 'Nearby search timed out. Please check your connection or retry.',
+                error: NetworkException('Connection timed out. Please check your network or server.'),
+                message: 'Connection timed out. Please check your network or server.',
               ),
             );
           } else if (e.type == DioExceptionType.connectionError) {

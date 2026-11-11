@@ -19,14 +19,15 @@ class MapConfig {
 
   /// User MapTiler API Key (Configurable via --dart-define=MAPTILER_API_KEY=your_key)
   static const String maptilerApiKey =
-      String.fromEnvironment('MAPTILER_API_KEY', defaultValue: 'YOUR_MAPTILER_API_KEY');
+      String.fromEnvironment('MAPTILER_API_KEY', defaultValue: '');
 
   /// MapTiler Streets-v2
   static const String maptilerStreetsUrl =
       'https://api.maptiler.com/maps/streets-v2/256/{z}/{x}/{y}.png?key=$maptilerApiKey';
 
-  /// Active default tile URL template (Standard colorful OpenStreetMap)
-  static const String defaultTileUrl = standardOsmTileUrl;
+  /// Active default tile URL template (MapTiler if key provided, else Standard OSM)
+  static const String defaultTileUrl =
+      maptilerApiKey.isNotEmpty ? maptilerStreetsUrl : standardOsmTileUrl;
 
   /// Multi-domain sharding (for servers that support it)
   static const List<String> tileSubdomains = [];

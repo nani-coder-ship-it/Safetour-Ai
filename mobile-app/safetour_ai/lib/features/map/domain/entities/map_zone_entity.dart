@@ -63,7 +63,10 @@ class MapZoneEntity {
             // GeoJSON coordinates are [longitude, latitude]
             final double lng = (coord[0] as num).toDouble();
             final double lat = (coord[1] as num).toDouble();
-            points.add(LatLng(lat, lng));
+            if (!lat.isNaN && !lat.isInfinite && !lng.isNaN && !lng.isInfinite &&
+                lat >= -90.0 && lat <= 90.0 && lng >= -180.0 && lng <= 180.0) {
+              points.add(LatLng(lat, lng));
+            }
           }
         }
       }

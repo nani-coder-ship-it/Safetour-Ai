@@ -47,7 +47,41 @@ const getMe = async (req, res, next) => {
   }
 };
 
+const updateMe = async (req, res, next) => {
+  try {
+    const firebaseUid = req.user.uid;
+    const { name, phone, emergencyContacts } = req.body;
+
+    const user = await authService.updateUserProfile(firebaseUid, {
+      name,
+      phone,
+      emergencyContacts,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: user,
+      message: 'User profile updated successfully',
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      res.status(error.statusCode);
+    } else if (
+      error.message.includes('validation') ||
+      error.message.includes('Contact') ||
+      error.message.includes('contact') ||
+      error.message.includes('phone') ||
+      error.message.includes('Maximum') ||
+      error.message.includes('Name cannot be empty')
+    ) {
+      res.status(400);
+    }
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   getMe,
+  updateMe,
 };

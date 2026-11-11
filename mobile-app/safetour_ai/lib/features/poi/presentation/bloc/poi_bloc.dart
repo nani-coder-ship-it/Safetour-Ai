@@ -49,11 +49,30 @@ class PoiBloc extends Bloc<PoiEvent, PoiState> {
     // Otherwise, obtain latest GPS coordinates from device
     if (lat == null || lng == null || event.forceRefresh) {
       final permission = await locationService.requestPermission();
-      if (permission == LocationPermissionStatus.denied ||
-          permission == LocationPermissionStatus.deniedForever) {
+      if (permission == LocationPermissionStatus.serviceDisabled) {
         emit(PoiError(
           message:
-              'Location permission is required to find nearby places. Please enable location access in settings.',
+              'Device GPS / Location is turned OFF. Please turn ON location in device settings to find nearby places.',
+          selectedType: type,
+          selectedRadius: radius,
+          selectedSubType: subType,
+          searchQuery: state.searchQuery,
+        ));
+        return;
+      } else if (permission == LocationPermissionStatus.deniedForever) {
+        emit(PoiError(
+          message:
+              'Location permission is permanently denied. Please tap "Open Settings" to enable location permission for SafeTour AI.',
+          selectedType: type,
+          selectedRadius: radius,
+          selectedSubType: subType,
+          searchQuery: state.searchQuery,
+        ));
+        return;
+      } else if (permission == LocationPermissionStatus.denied) {
+        emit(PoiError(
+          message:
+              'Location permission is required to find nearby places. Please tap "Grant Permission" to allow access.',
           selectedType: type,
           selectedRadius: radius,
           selectedSubType: subType,
@@ -62,24 +81,31 @@ class PoiBloc extends Bloc<PoiEvent, PoiState> {
         return;
       }
 
-      // Try last known position for instant fix
+      // Instant fix: Try last known position first (instant <10ms)
       try {
         final lastPos = await locationService.getLastKnownPosition();
-        if (lastPos != null) {
+        if (lastPos != null &&
+            !lastPos.latitude.isNaN && !lastPos.latitude.isInfinite &&
+            !lastPos.longitude.isNaN && !lastPos.longitude.isInfinite) {
           lat = lastPos.latitude;
           lng = lastPos.longitude;
         }
       } catch (_) {}
 
-      // Try fresh high-accuracy position
-      try {
-        final position = await locationService
-            .getCurrentPosition()
-            .timeout(const Duration(seconds: 7));
-        lat = position.latitude;
-        lng = position.longitude;
-      } catch (_) {
-        // If high accuracy GPS timed out indoors, use last known if available
+      // Only if no location was available or user forced a refresh, await fresh satellite lock with a lean 2.5s ceiling
+      if ((lat == null || lng == null) || event.forceRefresh) {
+        try {
+          final position = await locationService
+              .getCurrentPosition()
+              .timeout(const Duration(milliseconds: 2500));
+          if (!position.latitude.isNaN && !position.latitude.isInfinite &&
+              !position.longitude.isNaN && !position.longitude.isInfinite) {
+            lat = position.latitude;
+            lng = position.longitude;
+          }
+        } catch (_) {
+          // If high accuracy GPS timed out indoors, continue with last known if available
+        }
       }
 
       if (lat == null || lng == null) {
@@ -104,7 +130,7 @@ class PoiBloc extends Bloc<PoiEvent, PoiState> {
         subType: subType,
         search: event.search,
       ).timeout(
-        const Duration(seconds: 22),
+        const Duration(seconds: 32),
         onTimeout: () => throw TimeoutException('Nearby search took too long — please try again.'),
       );
 
@@ -113,7 +139,8 @@ class PoiBloc extends Bloc<PoiEvent, PoiState> {
       final fallbackPois = <PoiEntity>[];
 
       for (final p in rawPois) {
-        if (type == 'hotel' && p.isStudentAccommodation) {
+        // Defense-in-depth: Exclude collegiate / student accommodation across all categories
+        if (p.isStudentAccommodation) {
           continue;
         }
 

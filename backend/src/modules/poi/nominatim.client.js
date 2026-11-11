@@ -13,33 +13,36 @@ const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org/search';
  */
 const CATEGORY_SEARCH_PARAMS = {
   hotel: [
+    'q=[tourism=hotel]',
+    'q=[tourism=guest_house]',
+    'q=[tourism=motel]',
+    'q=[tourism=hostel]',
     'q=hotel',
     'q=lodge',
-    'q=resort',
     'q=guest house',
-    'q=mansion',
-    'q=rooms',
-    'q=dharamshala',
+    'q=resort',
+    'q=motel',
   ],
   restaurant: [
     'q=restaurant',
+    'q=canteen',
     'q=hotel',
+    'q=mess',
     'q=bakery',
     'q=cafe',
-    'q=mess',
     'q=biryani',
     'q=fast food',
   ],
   tourist_spot: [
     'q=temple',
     'q=kovil',
+    'q=tourist attraction',
+    'q=monument',
+    'q=falls',
+    'q=viewpoint',
     'q=church',
     'q=mosque',
-    'q=monument',
-    'q=tourist attraction',
     'q=park',
-    'q=dam',
-    'q=falls',
   ],
   hospital: [
     'q=hospital',
@@ -124,88 +127,109 @@ const queryNominatim = async (lat, lng, radiusMeters = 3000, type) => {
   const seenOsmIds = new Set();
   const excludedCount = [];
 
-  // Process queries in small parallel batches of 2 to balance speed and CDN rate compliance
-  const batchSize = 2;
-  for (let i = 0; i < queryList.length; i += batchSize) {
-    const batch = queryList.slice(i, i + batchSize);
-    const batchPromises = batch.map(async (param) => {
-      const url = `${NOMINATIM_BASE_URL}?format=json&${param}&viewbox=${viewbox}&bounded=1&limit=20&addressdetails=1`;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+  // Query top 6 most relevant terms in parallel with a 4s timeout for dense, fast responsiveness
+  const targetQueries = queryList.slice(0, 6);
+  console.log(`\n=================== [NOMINATIM QUERY DETAILS] ===================`);
+  console.log(`POI Type: "${type}" | Viewbox: [${viewbox}] | Search Radius: ${searchDistMeters}m`);
+  console.log(`Target Search Queries: ${JSON.stringify(targetQueries)}`);
+  targetQueries.forEach((q, idx) => console.log(`   Query #${idx + 1}: ${NOMINATIM_BASE_URL}?format=json&${q}&viewbox=${viewbox}&bounded=1&limit=20`));
+  console.log(`=================================================================\n`);
+  const queryPromises = targetQueries.map(async (param) => {
+    const url = `${NOMINATIM_BASE_URL}?format=json&${param}&viewbox=${viewbox}&bounded=1&limit=20&addressdetails=1`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-      try {
-        const response = await fetch(url, {
-          headers: {
-            'User-Agent': 'SafeTourAI-Backend/1.2 (https://safetour.ai; contact@safetour.ai)',
-            'Accept-Language': 'en',
-          },
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'SafeTourAI-Backend/1.2 (https://safetour.ai; contact@safetour.ai)',
+          'Accept-Language': 'en',
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
 
-        if (response.ok) {
-          const data = await response.json();
-          if (Array.isArray(data)) {
-            for (const item of data) {
-              const itemLat = parseFloat(item.lat);
-              const itemLng = parseFloat(item.lon);
-              if (isNaN(itemLat) || isNaN(itemLng)) continue;
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          for (const item of data) {
+            const itemLat = parseFloat(item.lat);
+            const itemLng = parseFloat(item.lon);
+            if (isNaN(itemLat) || isNaN(itemLng)) continue;
 
-              // Filter out roads, highways, and administrative boundaries
-              if (item.class === 'highway' || item.class === 'boundary' || item.type === 'administrative') {
-                continue;
-              }
-
-              const osmId = `${item.osm_type || 'node'}/${item.osm_id || Math.floor(Math.random() * 10000000)}`;
-              if (seenOsmIds.has(osmId)) continue;
-
-              // Extract real name, requirement 12: do not create fake placeholder names
-              const rawName = item.name || (item.display_name ? item.display_name.split(',')[0].trim() : null);
-              if (!rawName || rawName.trim().length === 0) {
-                continue;
-              }
-              const cleanName = rawName.trim();
-
-              // CRITICAL: Filter student / collegiate hostels from Hotels & Lodges
-              if (type === 'hotel' && isStudentAccommodation(cleanName, item)) {
-                excludedCount.push(cleanName);
-                continue;
-              }
-
-              seenOsmIds.add(osmId);
-
-              collectedPois.push({
-                osmId,
-                name: cleanName,
-                type,
-                subType: item.class || item.type || type,
-                address: item.display_name || 'Address unavailable',
-                phone: null,
-                website: null,
-                lat: itemLat,
-                lng: itemLng,
-                location: {
-                  type: 'Point',
-                  coordinates: [itemLng, itemLat],
-                },
-                rating: null,
-                lastSynced: new Date(),
-              });
+            // Filter out roads, highways, and administrative boundaries
+            if (item.class === 'highway' || item.class === 'boundary' || item.type === 'administrative') {
+              continue;
             }
+
+            const osmId = `${item.osm_type || 'node'}/${item.osm_id || Math.floor(Math.random() * 10000000)}`;
+            if (seenOsmIds.has(osmId)) continue;
+
+            // Extract real name, requirement 12: do not create fake placeholder names
+            const rawName = item.name || (item.display_name ? item.display_name.split(',')[0].trim() : null);
+            if (!rawName || rawName.trim().length === 0) {
+              continue;
+            }
+            const cleanName = rawName.trim();
+
+            // CRITICAL: Filter student / collegiate hostels from ALL categories
+            if (isStudentAccommodation(cleanName, item)) {
+              excludedCount.push(cleanName);
+              continue;
+            }
+            // Strict category check for hotel: MUST be tourism accommodation or building=hotel
+            if (type === 'hotel') {
+              const isTourism = item.class === 'tourism' &&
+                ['hotel', 'guest_house', 'motel', 'hostel', 'resort', 'lodge', 'chalet', 'apartment'].includes(item.type);
+              const isHotelBuilding = item.class === 'building' && item.type === 'hotel';
+              
+              // Non-hotel buildings (like canteen) or amenity (like restaurant) NEVER qualify under hotel
+              if (!isTourism && !isHotelBuilding) {
+                continue;
+              }
+            }
+
+            // Resolve meaningful subType rather than raw OSM classes like 'building' or 'amenity'
+            let resolvedSubType = type;
+            if (type === 'hotel') {
+              if (['guest_house', 'motel', 'hostel', 'resort', 'lodge'].includes(item.type)) {
+                resolvedSubType = item.type;
+              } else {
+                resolvedSubType = 'hotel';
+              }
+            } else if (item.type && item.type !== 'yes' && item.type !== 'building') {
+              resolvedSubType = item.type;
+            }
+
+            seenOsmIds.add(osmId);
+
+            collectedPois.push({
+              osmId,
+              name: cleanName,
+              type,
+              subType: resolvedSubType,
+              address: item.display_name || 'Address unavailable',
+              phone: null,
+              website: null,
+              lat: itemLat,
+              lng: itemLng,
+              location: {
+                type: 'Point',
+                coordinates: [itemLng, itemLat],
+              },
+              rating: null,
+              lastSynced: new Date(),
+            });
           }
         }
-      } catch (err) {
-        clearTimeout(timeoutId);
-        console.warn(`[Nominatim POI] Query "${param}" notice: ${err.message}`);
       }
-    });
-
-    await Promise.all(batchPromises);
-
-    if (i + batchSize < queryList.length) {
-      await delay(80);
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.warn(`[Nominatim POI] Query "${param}" notice: ${err.message}`);
     }
-  }
+  });
+
+  await Promise.all(queryPromises);
 
   const elapsedMs = Date.now() - startTime;
   if (excludedCount.length > 0) {

@@ -1,0 +1,28 @@
+{
+  "experiment_name": "SafeTour AI Shortest vs. Safest Route Comparison Benchmark",
+  "timestamp": "2026-10-09T07:20:09Z",
+  "valid_od_pairs_evaluated": 30,
+  "metrics_summary": {
+    "avg_shortest_distance_m": 4628.69,
+    "avg_safest_distance_m": 9981.55,
+    "avg_distance_increase_m": 5352.86,
+    "avg_distance_increase_pct": 132.85,
+    "avg_shortest_cumulative_risk": 718.91,
+    "avg_safest_cumulative_risk": 518.54,
+    "avg_cumulative_risk_reduction": 200.37,
+    "avg_cumulative_risk_reduction_pct": 23.43,
+    "avg_shortest_mean_safety": 76.44,
+    "avg_safest_mean_safety": 76.04,
+    "avg_safety_score_gain_points": -0.4,
+    "routes_taking_safer_detour_pct": 96.7
+  },
+  "risk_calculation_methodology": {
+    "safety_score_source": "Edge-Conditioned Multi-Head GATv2 model predictions (0 to 100 scale)",
+    "segment_risk_score": "risk(e) = 100.0 - safety(e)",
+    "shortest_path_cost": "cost_short(e) = length(e) in meters (minimizes physical distance)",
+    "safest_path_cost": "cost_safe(e) = risk(e) (minimizes cumulative segment risk along the route)",
+    "cumulative_risk_formula": "Cumulative Risk = sum_{e in path} risk(e)",
+    "distance_increase_formula": "Distance Increase (%) = (Dist_safest - Dist_shortest) / Dist_shortest * 100%",
+    "risk_reduction_formula": "Risk Reduction (%) = (Risk_shortest - Risk_safest) / Risk_shortest * 100%"
+  }
+}

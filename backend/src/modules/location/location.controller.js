@@ -3,11 +3,19 @@ const authService = require('../auth/auth.service');
 
 const saveLocation = async (req, res, next) => {
   try {
-    const { lat, lng, speed, battery, network } = req.body;
+    let { lat, lng, speed, battery, network } = req.body;
 
     if (lat === undefined || lng === undefined) {
       res.status(400);
       throw new Error('Please provide lat and lng');
+    }
+
+    // Auto-normalize swapped latitude and longitude (e.g. tester swapped lat ~77° and lng ~9° in Fake GPS for India/Tamil Nadu)
+    if (lat > 60 && lng < 40 && lat <= 90) {
+      console.log(`[COORDINATES NORMALIZED] Auto-swapped Lat (${lat}) and Lng (${lng}) -> normalized to Lat: ${lng}, Lng: ${lat}`);
+      const temp = lat;
+      lat = lng;
+      lng = temp;
     }
 
     // Resolve the MongoDB User from the Firebase token UID

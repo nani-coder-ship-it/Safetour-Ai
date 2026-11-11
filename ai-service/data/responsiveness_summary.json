@@ -1,0 +1,53 @@
+{
+  "benchmark_name": "SafeTour AI Live System Responsiveness",
+  "timestamp": "2026-10-09T07:52:41Z",
+  "backend_url": "http://127.0.0.1:5000",
+  "results": {
+    "location_update_to_alert": {
+      "name": "Location Update to Alert",
+      "total_requests": 35,
+      "successful_requests": 35,
+      "success_rate_pct": 100.0,
+      "latency": {
+        "mean_ms": 239.13,
+        "median_ms": 223.65,
+        "p95_ms": 344.39,
+        "min_ms": 198.67,
+        "max_ms": 476.1,
+        "std_ms": 61.36
+      }
+    },
+    "nearby_places_cold_cache": {
+      "name": "Nearby Places (Cold Cache)",
+      "total_requests": 35,
+      "successful_requests": 35,
+      "success_rate_pct": 100.0,
+      "latency": {
+        "mean_ms": 164.9,
+        "median_ms": 140.05,
+        "p95_ms": 320.24,
+        "min_ms": 117.62,
+        "max_ms": 405.01,
+        "std_ms": 65.65
+      }
+    },
+    "nearby_places_warm_cache": {
+      "name": "Nearby Places (Warm Cache)",
+      "total_requests": 35,
+      "successful_requests": 35,
+      "success_rate_pct": 100.0,
+      "latency": {
+        "mean_ms": 115.62,
+        "median_ms": 100.95,
+        "p95_ms": 167.85,
+        "min_ms": 85.54,
+        "max_ms": 396.64,
+        "std_ms": 53.73
+      }
+    }
+  },
+  "cache_performance": {
+    "speedup_factor": "1.4x faster on warm cache",
+    "latency_reduction_pct": 29.9
+  }
+}

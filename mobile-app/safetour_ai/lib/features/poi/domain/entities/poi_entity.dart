@@ -37,10 +37,46 @@ class PoiEntity {
   }
 
   String get displaySubType {
-    final s = (subType ?? type).toLowerCase();
+    final s = (subType ?? '').toLowerCase().trim();
+    if (s.isEmpty ||
+        s == 'building' ||
+        s == 'amenity' ||
+        s == 'other' ||
+        s == 'yes' ||
+        s == 'unclassified') {
+      switch (type.toLowerCase()) {
+        case 'hotel':
+          return 'Hotel / Lodge';
+        case 'tourist_spot':
+          return 'Attraction';
+        case 'restaurant':
+          return 'Dining';
+        case 'hospital':
+          return 'Hospital';
+        case 'pharmacy':
+          return 'Pharmacy';
+        case 'police':
+          return 'Police Station';
+        case 'atm':
+          return 'ATM / Bank';
+        case 'petrol_pump':
+          return 'Fuel Station';
+        case 'bus_stop':
+          return 'Bus Station';
+        case 'railway_station':
+          return 'Railway Station';
+        default:
+          return type
+              .replaceAll('_', ' ')
+              .split(' ')
+              .map((w) =>
+                  w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
+              .join(' ');
+      }
+    }
     switch (s) {
       case 'lodge':
-        return 'Small Lodge';
+        return 'Lodge';
       case 'guest_house':
         return 'Guest House';
       case 'homestay':
@@ -82,7 +118,12 @@ class PoiEntity {
       case 'pharmacy':
         return 'Pharmacy';
       default:
-        return s.replaceAll('_', ' ').split(' ').map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' ');
+        return s
+            .replaceAll('_', ' ')
+            .split(' ')
+            .map((w) =>
+                w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
+            .join(' ');
     }
   }
 

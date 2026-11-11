@@ -1,0 +1,106 @@
+test_case,request_id,condition,endpoint,status_code,success,latency_ms,payload_details,response_items_count
+location_update_to_alert,1,geofence_active,POST /api/v1/location,201,True,225.72,Target: Pilavakkal Dam Deep Reservoir,1
+location_update_to_alert,2,geofence_active,POST /api/v1/location,201,True,226.5,Target: Ayyanar Falls Flash Flood,1
+location_update_to_alert,3,geofence_active,POST /api/v1/location,201,True,289.11,Target: Shenbagathoppu Forest Elephant Corridor,1
+location_update_to_alert,4,geofence_active,POST /api/v1/location,201,True,214.01,Target: Sanjeevi Hills Cliff Edge,1
+location_update_to_alert,5,geofence_active,POST /api/v1/location,201,True,214.13,Target: Naranapuram Lake Deep Water Hazard,1
+location_update_to_alert,6,geofence_active,POST /api/v1/location,201,True,476.1,Target: Courtallam Falls Torrential Gorge,1
+location_update_to_alert,7,geofence_active,POST /api/v1/location,201,True,212.87,Target: Kodaikanal Suicide Point Cliff,1
+location_update_to_alert,8,geofence_active,POST /api/v1/location,201,True,229.13,Target: Meghamalai Mountain Landslide Corridor,1
+location_update_to_alert,9,geofence_active,POST /api/v1/location,201,True,257.19,Target: Pilavakkal Dam Deep Reservoir,1
+location_update_to_alert,10,geofence_active,POST /api/v1/location,201,True,229.74,Target: Ayyanar Falls Flash Flood,1
+location_update_to_alert,11,geofence_active,POST /api/v1/location,201,True,232.35,Target: Shenbagathoppu Forest Elephant Corridor,1
+location_update_to_alert,12,geofence_active,POST /api/v1/location,201,True,210.14,Target: Sanjeevi Hills Cliff Edge,1
+location_update_to_alert,13,geofence_active,POST /api/v1/location,201,True,216.35,Target: Naranapuram Lake Deep Water Hazard,1
+location_update_to_alert,14,geofence_active,POST /api/v1/location,201,True,227.91,Target: Courtallam Falls Torrential Gorge,1
+location_update_to_alert,15,geofence_active,POST /api/v1/location,201,True,223.65,Target: Kodaikanal Suicide Point Cliff,1
+location_update_to_alert,16,geofence_active,POST /api/v1/location,201,True,210.13,Target: Meghamalai Mountain Landslide Corridor,1
+location_update_to_alert,17,geofence_active,POST /api/v1/location,201,True,222.72,Target: Pilavakkal Dam Deep Reservoir,1
+location_update_to_alert,18,geofence_active,POST /api/v1/location,201,True,229.2,Target: Ayyanar Falls Flash Flood,1
+location_update_to_alert,19,geofence_active,POST /api/v1/location,201,True,235.36,Target: Shenbagathoppu Forest Elephant Corridor,1
+location_update_to_alert,20,geofence_active,POST /api/v1/location,201,True,224.53,Target: Sanjeevi Hills Cliff Edge,1
+location_update_to_alert,21,geofence_active,POST /api/v1/location,201,True,208.24,Target: Naranapuram Lake Deep Water Hazard,1
+location_update_to_alert,22,geofence_active,POST /api/v1/location,201,True,230.3,Target: Courtallam Falls Torrential Gorge,1
+location_update_to_alert,23,geofence_active,POST /api/v1/location,201,True,208.73,Target: Kodaikanal Suicide Point Cliff,1
+location_update_to_alert,24,geofence_active,POST /api/v1/location,201,True,202.96,Target: Meghamalai Mountain Landslide Corridor,1
+location_update_to_alert,25,geofence_active,POST /api/v1/location,201,True,273.38,Target: Pilavakkal Dam Deep Reservoir,1
+location_update_to_alert,26,geofence_active,POST /api/v1/location,201,True,217.46,Target: Ayyanar Falls Flash Flood,1
+location_update_to_alert,27,geofence_active,POST /api/v1/location,201,True,266.07,Target: Shenbagathoppu Forest Elephant Corridor,1
+location_update_to_alert,28,geofence_active,POST /api/v1/location,201,True,202.72,Target: Sanjeevi Hills Cliff Edge,1
+location_update_to_alert,29,geofence_active,POST /api/v1/location,201,True,217.64,Target: Naranapuram Lake Deep Water Hazard,1
+location_update_to_alert,30,geofence_active,POST /api/v1/location,201,True,473.37,Target: Courtallam Falls Torrential Gorge,1
+location_update_to_alert,31,geofence_active,POST /api/v1/location,201,True,210.68,Target: Kodaikanal Suicide Point Cliff,1
+location_update_to_alert,32,geofence_active,POST /api/v1/location,201,True,210.06,Target: Meghamalai Mountain Landslide Corridor,1
+location_update_to_alert,33,geofence_active,POST /api/v1/location,201,True,200.0,Target: Pilavakkal Dam Deep Reservoir,1
+location_update_to_alert,34,geofence_active,POST /api/v1/location,201,True,242.48,Target: Ayyanar Falls Flash Flood,1
+location_update_to_alert,35,geofence_active,POST /api/v1/location,201,True,198.67,Target: Shenbagathoppu Forest Elephant Corridor,1
+nearby_places,1,cold_cache,GET /api/v1/poi/nearby,200,True,290.58,"Type: hospital, Coord: (10.806, 79.153)",32
+nearby_places,2,cold_cache,GET /api/v1/poi/nearby,200,True,389.46,"Type: pharmacy, Coord: (11.694, 78.176)",0
+nearby_places,3,cold_cache,GET /api/v1/poi/nearby,200,True,187.45,"Type: hotel, Coord: (11.005, 79.430)",0
+nearby_places,4,cold_cache,GET /api/v1/poi/nearby,200,True,169.27,"Type: restaurant, Coord: (11.401, 77.777)",0
+nearby_places,5,cold_cache,GET /api/v1/poi/nearby,200,True,135.13,"Type: police, Coord: (12.991, 79.207)",0
+nearby_places,6,cold_cache,GET /api/v1/poi/nearby,200,True,139.66,"Type: hospital, Coord: (8.804, 77.847)",0
+nearby_places,7,cold_cache,GET /api/v1/poi/nearby,200,True,189.94,"Type: pharmacy, Coord: (10.472, 78.085)",0
+nearby_places,8,cold_cache,GET /api/v1/poi/nearby,200,True,154.22,"Type: hotel, Coord: (11.868, 79.891)",0
+nearby_places,9,cold_cache,GET /api/v1/poi/nearby,200,True,143.54,"Type: restaurant, Coord: (10.925, 79.273)",0
+nearby_places,10,cold_cache,GET /api/v1/poi/nearby,200,True,126.04,"Type: police, Coord: (11.814, 78.296)",0
+nearby_places,11,cold_cache,GET /api/v1/poi/nearby,200,True,164.29,"Type: hospital, Coord: (11.125, 79.550)",0
+nearby_places,12,cold_cache,GET /api/v1/poi/nearby,200,True,131.14,"Type: pharmacy, Coord: (11.521, 77.897)",0
+nearby_places,13,cold_cache,GET /api/v1/poi/nearby,200,True,158.52,"Type: hotel, Coord: (13.111, 79.327)",0
+nearby_places,14,cold_cache,GET /api/v1/poi/nearby,200,True,162.03,"Type: restaurant, Coord: (8.924, 77.967)",0
+nearby_places,15,cold_cache,GET /api/v1/poi/nearby,200,True,145.97,"Type: police, Coord: (10.592, 78.205)",0
+nearby_places,16,cold_cache,GET /api/v1/poi/nearby,200,True,134.41,"Type: hospital, Coord: (11.988, 80.011)",0
+nearby_places,17,cold_cache,GET /api/v1/poi/nearby,200,True,147.18,"Type: pharmacy, Coord: (11.046, 79.393)",0
+nearby_places,18,cold_cache,GET /api/v1/poi/nearby,200,True,117.62,"Type: hotel, Coord: (11.934, 78.416)",0
+nearby_places,19,cold_cache,GET /api/v1/poi/nearby,200,True,149.2,"Type: restaurant, Coord: (11.245, 79.669)",0
+nearby_places,20,cold_cache,GET /api/v1/poi/nearby,200,True,405.01,"Type: police, Coord: (11.641, 78.017)",0
+nearby_places,21,cold_cache,GET /api/v1/poi/nearby,200,True,135.47,"Type: hospital, Coord: (13.231, 79.447)",0
+nearby_places,22,cold_cache,GET /api/v1/poi/nearby,200,True,182.76,"Type: pharmacy, Coord: (9.044, 78.087)",0
+nearby_places,23,cold_cache,GET /api/v1/poi/nearby,200,True,133.62,"Type: hotel, Coord: (10.712, 78.325)",0
+nearby_places,24,cold_cache,GET /api/v1/poi/nearby,200,True,136.66,"Type: restaurant, Coord: (12.108, 80.131)",0
+nearby_places,25,cold_cache,GET /api/v1/poi/nearby,200,True,125.42,"Type: police, Coord: (11.165, 79.513)",0
+nearby_places,26,cold_cache,GET /api/v1/poi/nearby,200,True,132.22,"Type: hospital, Coord: (12.054, 78.536)",0
+nearby_places,27,cold_cache,GET /api/v1/poi/nearby,200,True,126.76,"Type: pharmacy, Coord: (11.365, 79.790)",0
+nearby_places,28,cold_cache,GET /api/v1/poi/nearby,200,True,126.34,"Type: hotel, Coord: (11.761, 78.137)",0
+nearby_places,29,cold_cache,GET /api/v1/poi/nearby,200,True,177.34,"Type: restaurant, Coord: (13.351, 79.567)",0
+nearby_places,30,cold_cache,GET /api/v1/poi/nearby,200,True,122.38,"Type: police, Coord: (9.164, 78.207)",0
+nearby_places,31,cold_cache,GET /api/v1/poi/nearby,200,True,134.38,"Type: hospital, Coord: (10.832, 78.445)",0
+nearby_places,32,cold_cache,GET /api/v1/poi/nearby,200,True,206.86,"Type: pharmacy, Coord: (12.228, 80.251)",0
+nearby_places,33,cold_cache,GET /api/v1/poi/nearby,200,True,140.05,"Type: hotel, Coord: (11.285, 79.633)",0
+nearby_places,34,cold_cache,GET /api/v1/poi/nearby,200,True,123.52,"Type: restaurant, Coord: (12.174, 78.656)",0
+nearby_places,35,cold_cache,GET /api/v1/poi/nearby,200,True,127.1,"Type: police, Coord: (11.485, 79.910)",0
+nearby_places,1,warm_cache,GET /api/v1/poi/nearby,200,True,119.8,"Type: hospital, Radius: 10000m",15
+nearby_places,2,warm_cache,GET /api/v1/poi/nearby,200,True,109.17,"Type: hotel, Radius: 10000m",6
+nearby_places,3,warm_cache,GET /api/v1/poi/nearby,200,True,95.43,"Type: restaurant, Radius: 10000m",5
+nearby_places,4,warm_cache,GET /api/v1/poi/nearby,200,True,87.89,"Type: bus_stop, Radius: 10000m",3
+nearby_places,5,warm_cache,GET /api/v1/poi/nearby,200,True,138.9,"Type: hospital, Radius: 10000m",15
+nearby_places,6,warm_cache,GET /api/v1/poi/nearby,200,True,96.91,"Type: hotel, Radius: 10000m",6
+nearby_places,7,warm_cache,GET /api/v1/poi/nearby,200,True,85.54,"Type: restaurant, Radius: 10000m",5
+nearby_places,8,warm_cache,GET /api/v1/poi/nearby,200,True,108.55,"Type: hospital, Radius: 10000m",15
+nearby_places,9,warm_cache,GET /api/v1/poi/nearby,200,True,89.39,"Type: hotel, Radius: 10000m",6
+nearby_places,10,warm_cache,GET /api/v1/poi/nearby,200,True,94.79,"Type: restaurant, Radius: 10000m",5
+nearby_places,11,warm_cache,GET /api/v1/poi/nearby,200,True,123.75,"Type: bus_stop, Radius: 10000m",3
+nearby_places,12,warm_cache,GET /api/v1/poi/nearby,200,True,114.88,"Type: hospital, Radius: 10000m",15
+nearby_places,13,warm_cache,GET /api/v1/poi/nearby,200,True,98.62,"Type: hotel, Radius: 10000m",6
+nearby_places,14,warm_cache,GET /api/v1/poi/nearby,200,True,86.74,"Type: restaurant, Radius: 10000m",5
+nearby_places,15,warm_cache,GET /api/v1/poi/nearby,200,True,396.64,"Type: hospital, Radius: 10000m",15
+nearby_places,16,warm_cache,GET /api/v1/poi/nearby,200,True,108.77,"Type: hotel, Radius: 10000m",6
+nearby_places,17,warm_cache,GET /api/v1/poi/nearby,200,True,88.43,"Type: restaurant, Radius: 10000m",5
+nearby_places,18,warm_cache,GET /api/v1/poi/nearby,200,True,90.66,"Type: bus_stop, Radius: 10000m",3
+nearby_places,19,warm_cache,GET /api/v1/poi/nearby,200,True,128.36,"Type: hospital, Radius: 10000m",15
+nearby_places,20,warm_cache,GET /api/v1/poi/nearby,200,True,92.28,"Type: hotel, Radius: 10000m",6
+nearby_places,21,warm_cache,GET /api/v1/poi/nearby,200,True,207.74,"Type: restaurant, Radius: 10000m",5
+nearby_places,22,warm_cache,GET /api/v1/poi/nearby,200,True,150.76,"Type: hospital, Radius: 10000m",15
+nearby_places,23,warm_cache,GET /api/v1/poi/nearby,200,True,102.56,"Type: hotel, Radius: 10000m",6
+nearby_places,24,warm_cache,GET /api/v1/poi/nearby,200,True,105.45,"Type: restaurant, Radius: 10000m",5
+nearby_places,25,warm_cache,GET /api/v1/poi/nearby,200,True,96.19,"Type: bus_stop, Radius: 10000m",3
+nearby_places,26,warm_cache,GET /api/v1/poi/nearby,200,True,138.13,"Type: hospital, Radius: 10000m",15
+nearby_places,27,warm_cache,GET /api/v1/poi/nearby,200,True,90.35,"Type: hotel, Radius: 10000m",6
+nearby_places,28,warm_cache,GET /api/v1/poi/nearby,200,True,100.95,"Type: restaurant, Radius: 10000m",5
+nearby_places,29,warm_cache,GET /api/v1/poi/nearby,200,True,88.7,"Type: hospital, Radius: 10000m",15
+nearby_places,30,warm_cache,GET /api/v1/poi/nearby,200,True,92.67,"Type: hotel, Radius: 10000m",6
+nearby_places,31,warm_cache,GET /api/v1/poi/nearby,200,True,101.68,"Type: restaurant, Radius: 10000m",5
+nearby_places,32,warm_cache,GET /api/v1/poi/nearby,200,True,112.76,"Type: bus_stop, Radius: 10000m",3
+nearby_places,33,warm_cache,GET /api/v1/poi/nearby,200,True,123.27,"Type: hospital, Radius: 10000m",15
+nearby_places,34,warm_cache,GET /api/v1/poi/nearby,200,True,89.36,"Type: hotel, Radius: 10000m",6
+nearby_places,35,warm_cache,GET /api/v1/poi/nearby,200,True,90.54,"Type: restaurant, Radius: 10000m",5

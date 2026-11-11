@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../../injection_container.dart';
 import '../../domain/entities/poi_entity.dart';
 import '../bloc/poi_bloc.dart';
@@ -9,12 +10,23 @@ import '../bloc/poi_state.dart';
 import '../../../map/presentation/pages/map_page.dart';
 
 class NearbyPage extends StatelessWidget {
-  const NearbyPage({super.key});
+  final double? userLat;
+  final double? userLng;
+
+  const NearbyPage({
+    super.key,
+    this.userLat,
+    this.userLng,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<PoiBloc>()..add(const LoadNearbyPOIs(type: 'hotel')),
+      create: (_) => sl<PoiBloc>()..add(LoadNearbyPOIs(
+        type: 'hotel',
+        userLat: userLat,
+        userLng: userLng,
+      )),
       child: const _NearbyView(),
     );
   }
@@ -403,7 +415,17 @@ class _NearbyViewState extends State<_NearbyView> {
               ),
 
               // Individual subType filter chips
-              ...subTypeCounts.entries.map((entry) {
+              ...subTypeCounts.entries.where((entry) {
+                final k = entry.key.toLowerCase().trim();
+                return k.isNotEmpty &&
+                    k != 'building' &&
+                    k != 'amenity' &&
+                    k != 'other' &&
+                    k != 'yes' &&
+                    k != 'no' &&
+                    k != 'unclassified' &&
+                    k != 'point';
+              }).map((entry) {
                 final subKey = entry.key;
                 final count = entry.value;
                 final isSelected = selectedSub == subKey;
@@ -446,9 +468,9 @@ class _NearbyViewState extends State<_NearbyView> {
   }
 
   String _formatSubtypeLabel(String raw) {
-    switch (raw.toLowerCase()) {
+    switch (raw.toLowerCase().trim()) {
       case 'lodge':
-        return 'Small Lodges';
+        return 'Lodges';
       case 'guest_house':
         return 'Guest Houses';
       case 'homestay':
@@ -459,8 +481,14 @@ class _NearbyViewState extends State<_NearbyView> {
         return 'Hotels';
       case 'resort':
         return 'Resorts';
+      case 'motel':
+        return 'Motels';
       case 'dharamshala':
         return 'Dharamshalas';
+      case 'choultry':
+        return 'Choultries';
+      case 'bed_and_breakfast':
+        return 'B&B Stays';
       case 'temple':
         return 'Temples & Shrines';
       case 'fort':
@@ -478,7 +506,13 @@ class _NearbyViewState extends State<_NearbyView> {
       case 'park':
         return 'Parks & Gardens';
       default:
-        return raw.replaceAll('_', ' ').split(' ').map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' ');
+        return raw
+            .replaceAll('_', ' ')
+            .split(' ')
+            .map((w) => w.isNotEmpty
+                ? '${w[0].toUpperCase()}${w.substring(1)}'
+                : '')
+            .join(' ');
     }
   }
 
@@ -953,31 +987,71 @@ class _NearbyViewState extends State<_NearbyView> {
     String searchQuery,
     String? subType,
   ) {
-    final catName = type.replaceFirst('_', ' ');
-    final subDesc = subType != null && subType != 'all'
-        ? ' in category "$subType"'
+    final isHotel = type == 'hotel';
+    final radiusKm = (radius / 1000).toInt();
+
+    final catObj = _categories.firstWhere(
+      (c) => c['type'] == type,
+      orElse: () => {
+        'label': type.replaceFirst('_', ' '),
+        'icon': Icons.explore_off_rounded,
+        'color': const Color(0xFF4F46E5),
+      },
+    );
+    final catName = catObj['label'] as String;
+    final catColor = (catObj['color'] as Color?) ?? const Color(0xFF4F46E5);
+
+    final subDesc = (subType != null && subType != 'all' && subType.isNotEmpty)
+        ? ' in ${_formatSubtypeLabel(subType)}'
         : '';
     final searchDesc =
         searchQuery.isNotEmpty ? ' matching "$searchQuery"' : '';
 
+    final String titleText;
+    final String subtitleText;
+
+    if (isHotel) {
+      if (searchQuery.isNotEmpty) {
+        titleText = 'No hotels found matching "$searchQuery"';
+        subtitleText =
+            'No matching hotels or lodges found within ${radiusKm}km.\nTry expanding your search radius or clearing your query.';
+      } else {
+        titleText = 'No hotels or lodges found within ${radiusKm}km';
+        subtitleText =
+            'No commercial accommodations found within ${radiusKm}km — try selecting a larger search radius (5km or 8km) to discover nearby stays.';
+      }
+    } else {
+      titleText = 'No $catName found within ${radiusKm}km$searchDesc$subDesc';
+      subtitleText =
+          'No verified places found within $radiusKm km.\nTry selecting a larger search distance chip above or resetting filters.';
+    }
+
+    // Larger radii options available for quick selection (excluding current radius)
+    final largerRadii = _radii.where((r) => r > radius).toList();
+
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.indigo.shade50,
+                color: catColor.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.explore_off_rounded,
-                  size: 48, color: Colors.indigo.shade400),
+              child: Icon(
+                isHotel
+                    ? Icons.hotel_outlined
+                    : (catObj['icon'] as IconData? ?? Icons.explore_off_rounded),
+                size: 46,
+                color: catColor,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             Text(
-              'No ${catName}s Found$subDesc$searchDesc',
+              titleText,
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
@@ -987,25 +1061,68 @@ class _NearbyViewState extends State<_NearbyView> {
             ),
             const SizedBox(height: 8),
             Text(
-              'No places found within ${(radius / 1000).toStringAsFixed(1)} km.\nTry selecting a larger search distance chip above (e.g. 3 km or 5 km) or trying another filter.',
+              subtitleText,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
-            ),
-            const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: () {
-                final nextRadius = radius >= 5000 ? 10000 : radius + 2000;
-                context.read<PoiBloc>().add(SelectRadius(nextRadius));
-              },
-              icon: const Icon(Icons.radar_rounded, size: 18),
-              label: Text('Expand Radius to ${((radius >= 5000 ? 10000 : radius + 2000) / 1000).toInt()} km'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF4F46E5),
-                side: const BorderSide(color: Color(0xFF4F46E5)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black54,
+                height: 1.45,
               ),
             ),
+            const SizedBox(height: 20),
+
+            // Quick Radius Selector Chips (e.g. 5km, 8km)
+            if (largerRadii.isNotEmpty) ...[
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: largerRadii.map((r) {
+                  final km = r ~/ 1000;
+                  return ActionChip(
+                    avatar: const Icon(
+                      Icons.radar_rounded,
+                      size: 16,
+                      color: Color(0xFF4F46E5),
+                    ),
+                    label: Text(
+                      'Search $km km',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF4F46E5),
+                      ),
+                    ),
+                    backgroundColor: Colors.indigo.shade50,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.indigo.shade200),
+                    ),
+                    onPressed: () {
+                      context.read<PoiBloc>().add(SelectRadius(r));
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Clear search / filter button if search query or subtype filter is active
+            if (searchQuery.isNotEmpty || (subType != null && subType != 'all')) ...[
+              TextButton.icon(
+                onPressed: () {
+                  _searchDebounceTimer?.cancel();
+                  _searchController.clear();
+                  context.read<PoiBloc>().add(const UpdateSearchQuery(''));
+                  context.read<PoiBloc>().add(const SelectSubType('all'));
+                },
+                icon: const Icon(Icons.clear_all_rounded, size: 16),
+                label: const Text('Reset Search & Subtypes'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.grey.shade700,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -1013,40 +1130,116 @@ class _NearbyViewState extends State<_NearbyView> {
   }
 
   Widget _buildErrorState(BuildContext context, String error) {
+    final isGpsOff = error.contains('turned OFF') || error.contains('GPS');
+    final isPermanentlyDenied = error.contains('permanently denied') || error.contains('Open Settings');
+    final isPermissionDenied = error.contains('permission') || error.contains('Permission');
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline_rounded,
-                size: 48, color: Colors.redAccent),
-            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isGpsOff
+                    ? Icons.location_off_rounded
+                    : (isPermissionDenied ? Icons.location_disabled_rounded : Icons.error_outline_rounded),
+                size: 44,
+                color: Colors.red.shade600,
+              ),
+            ),
+            const SizedBox(height: 16),
             const Text(
               'Unable to load nearby places',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               error,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54, fontSize: 13),
+              style: const TextStyle(color: Colors.black54, fontSize: 13, height: 1.4),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () {
-                final state = context.read<PoiBloc>().state;
-                context.read<PoiBloc>().add(LoadNearbyPOIs(
-                      type: state.selectedType,
-                      radiusMeters: state.selectedRadius,
-                    ));
-              },
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Try Again'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4F46E5),
-                foregroundColor: Colors.white,
-              ),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: [
+                if (isGpsOff)
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      await Geolocator.openLocationSettings();
+                    },
+                    icon: const Icon(Icons.settings_rounded, size: 18),
+                    label: const Text('Turn ON GPS'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F46E5),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  )
+                else if (isPermanentlyDenied)
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      await Geolocator.openAppSettings();
+                    },
+                    icon: const Icon(Icons.settings_rounded, size: 18),
+                    label: const Text('Open App Settings'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F46E5),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  )
+                else if (isPermissionDenied)
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      await Geolocator.requestPermission();
+                      if (context.mounted) {
+                        final state = context.read<PoiBloc>().state;
+                        context.read<PoiBloc>().add(LoadNearbyPOIs(
+                              type: state.selectedType,
+                              radiusMeters: state.selectedRadius,
+                              forceRefresh: true,
+                            ));
+                      }
+                    },
+                    icon: const Icon(Icons.security_rounded, size: 18),
+                    label: const Text('Grant Permission'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F46E5),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    final state = context.read<PoiBloc>().state;
+                    context.read<PoiBloc>().add(LoadNearbyPOIs(
+                          type: state.selectedType,
+                          radiusMeters: state.selectedRadius,
+                          forceRefresh: true,
+                        ));
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Try Again'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF4F46E5),
+                    side: const BorderSide(color: Color(0xFF4F46E5)),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1070,7 +1263,7 @@ class _LoadingStateWithTimeoutState extends State<_LoadingStateWithTimeout> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(seconds: 20), () {
+    _timer = Timer(const Duration(seconds: 25), () {
       if (mounted) {
         setState(() {
           _timedOut = true;
@@ -1121,7 +1314,7 @@ class _LoadingStateWithTimeoutState extends State<_LoadingStateWithTimeout> {
                     _timedOut = false;
                   });
                   _timer?.cancel();
-                  _timer = Timer(const Duration(seconds: 20), () {
+                  _timer = Timer(const Duration(seconds: 25), () {
                     if (mounted) {
                       setState(() {
                         _timedOut = true;

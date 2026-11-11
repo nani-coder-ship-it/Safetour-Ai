@@ -63,3 +63,26 @@ mobile-app/safetour_ai/*.log
 *.iws
 .DS_Store
 Thumbs.db
+
+# Python virtual environments & cache
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+ai-service/venv/
+ai-service/cache/
+ai-service/.env
+ai-service/.env.*
+!ai-service/.env.example
+ai-service/models/*.pt
+ai-service/models/*.pth
+ai-service/models/*.onnx
+
+# Large raw datasets (> 100MB)
+*.pbf
+*.osm.pbf
+ai-service/data/raw/*.pbf
+ai-service/data/raw/*.osm.pbf
