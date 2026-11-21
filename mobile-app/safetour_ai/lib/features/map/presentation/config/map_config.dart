@@ -26,7 +26,7 @@ class MapConfig {
       'https://api.maptiler.com/maps/streets-v2/256/{z}/{x}/{y}.png?key=$maptilerApiKey';
 
   /// Active default tile URL template (MapTiler if key provided, else Standard OSM)
-  static const String defaultTileUrl =
+  static String get defaultTileUrl =>
       maptilerApiKey.isNotEmpty ? maptilerStreetsUrl : standardOsmTileUrl;
 
   /// Multi-domain sharding (for servers that support it)

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/api_constants.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -809,12 +810,20 @@ class _ProfilePageState extends State<ProfilePage> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(5),
+                      width: 26,
+                      height: 26,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Icon(Icons.shield_rounded, color: Colors.white, size: 16),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Image.asset(
+                          'assets/icons/app_logo.png',
+                          width: 26,
+                          height: 26,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     const Text(
@@ -937,7 +946,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   // Scannable Sovereign QR Modal
   void _showProfileQrModal(BuildContext context) {
-    final qrUrl = 'http://192.168.29.197:5000/verify/$_travelerId';
+    final qrUrl = '${ApiConstants.serverBaseUrl}/verify/$_travelerId';
 
     showModalBottomSheet(
       context: context,

@@ -269,7 +269,6 @@ class _HomeContent extends StatelessWidget {
                             width: 42,
                             height: 42,
                             decoration: BoxDecoration(
-                              color: primaryBlue,
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
@@ -279,11 +278,13 @@ class _HomeContent extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.shield_rounded,
-                                color: Colors.white,
-                                size: 24,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.asset(
+                                'assets/icons/app_logo.png',
+                                width: 42,
+                                height: 42,
+                                fit: BoxFit.cover,
                               ),
                             ),
                           ),

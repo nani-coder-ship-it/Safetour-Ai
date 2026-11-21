@@ -361,12 +361,20 @@ class _DigitalIdViewState extends State<_DigitalIdView> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(5),
+                      width: 24,
+                      height: 24,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF4F46E5).withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Icon(Icons.shield_rounded, color: Color(0xFF818CF8), size: 14),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Image.asset(
+                          'assets/icons/app_logo.png',
+                          width: 24,
+                          height: 24,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     const Expanded(

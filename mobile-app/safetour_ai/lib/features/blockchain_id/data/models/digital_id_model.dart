@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../../../../core/constants/api_constants.dart';
 
 class DigitalIdModel {
   final String id;
@@ -97,7 +98,7 @@ class DigitalIdModel {
       expiresAt: json['expiresAt'] != null
           ? DateTime.tryParse(json['expiresAt'].toString()) ?? DateTime.now().add(const Duration(days: 365))
           : DateTime.now().add(const Duration(days: 365)),
-      qrPayload: 'http://192.168.29.197:5000/verify/${json['touristIdNumber'] ?? 'ST-2026-PASS'}',
+      qrPayload: '${ApiConstants.serverBaseUrl}/verify/${json['touristIdNumber'] ?? 'ST-2026-PASS'}',
     );
   }
 

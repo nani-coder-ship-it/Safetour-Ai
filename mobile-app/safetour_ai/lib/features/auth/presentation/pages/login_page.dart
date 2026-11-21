@@ -95,11 +95,10 @@ class _LoginPageState extends State<LoginPage> {
                               children: [
                                 // Brand Shield Logo Icon
                                 Container(
-                                  width: 48,
-                                  height: 48,
+                                  width: 56,
+                                  height: 56,
                                   decoration: BoxDecoration(
-                                    color: _primaryBlue,
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(16),
                                     boxShadow: [
                                       BoxShadow(
                                         color: _primaryBlue.withValues(alpha: 0.35),
@@ -108,11 +107,13 @@ class _LoginPageState extends State<LoginPage> {
                                       ),
                                     ],
                                   ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.shield_rounded,
-                                      color: Colors.white,
-                                      size: 28,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Image.asset(
+                                      'assets/icons/app_logo.png',
+                                      width: 56,
+                                      height: 56,
+                                      fit: BoxFit.cover,
                                     ),
                                   ),
                                 ),
