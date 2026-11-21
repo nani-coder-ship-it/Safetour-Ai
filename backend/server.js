@@ -31,9 +31,12 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
-// Default route
+// Default & Health Check routes for cloud deployment platforms (Render, Railway, Fly.io, AWS)
 app.get('/', (req, res) => {
   res.status(200).json({ success: true, message: 'SafeTour AI Backend API is running' });
+});
+app.get(['/health', '/api/v1/health'], (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 
 // Direct public verification route for camera QR scans
